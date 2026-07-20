@@ -10,3 +10,7 @@ server/uploads/*
 !server/uploads/.gitkeep
 *.tsbuildinfo
 .vite/
+
+# planning docs (local only)
+PLAN.md
+PLAN_DETAILED.md
