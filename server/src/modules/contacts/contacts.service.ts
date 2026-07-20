@@ -1,6 +1,5 @@
 import { parse as parseCsv } from 'csv-parse/sync';
 import * as XLSX from 'xlsx';
-import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import type {
   ContactDTO,
   ContactImportResult,
@@ -8,6 +7,7 @@ import type {
   ValidationStatus,
 } from '@vorizon/shared';
 import { Contact, type ContactDoc } from '../../models/Contact.js';
+import { toE164 } from '../../utils/phone.js';
 
 type ContactRecord = ContactDoc & { _id: unknown };
 
@@ -27,11 +27,8 @@ function toDTO(c: ContactRecord): ContactDTO {
 }
 
 /** Normalize & validate a phone to E.164. Returns null if invalid. */
-export function normalizePhone(raw: string, defaultCountry: 'US' | 'IN' = 'US'): string | null {
-  if (!raw) return null;
-  const parsed = parsePhoneNumberFromString(raw.trim(), defaultCountry);
-  if (!parsed || !parsed.isValid()) return null;
-  return parsed.number; // E.164
+export function normalizePhone(raw: string): string | null {
+  return toE164(raw);
 }
 
 export async function createContact(

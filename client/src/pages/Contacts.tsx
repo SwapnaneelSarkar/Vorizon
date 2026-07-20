@@ -8,7 +8,7 @@ import { Badge, Button, Card, EmptyState, Field, Input, Spinner } from '../compo
 
 export function ContactsPage() {
   const qc = useQueryClient();
-  const [form, setForm] = useState({ name: '', phone: '', email: '', company: '' });
+  const [form, setForm] = useState({ name: '', phone: '', email: '', company: '', tags: '', notes: '' });
   const [importResult, setImportResult] = useState<ContactImportResult | null>(null);
   const [error, setError] = useState('');
 
@@ -26,9 +26,17 @@ export function ContactsPage() {
   });
 
   const create = useMutation({
-    mutationFn: () => contactApi.create({ ...form, tags: [] }),
+    mutationFn: () =>
+      contactApi.create({
+        name: form.name,
+        phone: form.phone,
+        email: form.email,
+        company: form.company,
+        notes: form.notes,
+        tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
+      }),
     onSuccess: () => {
-      setForm({ name: '', phone: '', email: '', company: '' });
+      setForm({ name: '', phone: '', email: '', company: '', tags: '', notes: '' });
       setError('');
       invalidate();
     },
@@ -94,6 +102,16 @@ export function ContactsPage() {
             </Field>
             <Field label="Company">
               <Input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
+            </Field>
+            <Field label="Tags (comma-separated)">
+              <Input
+                value={form.tags}
+                onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                placeholder="lead, vip"
+              />
+            </Field>
+            <Field label="Notes">
+              <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </Field>
           </div>
           {error && <p className="mb-2 text-sm text-red-500">{error}</p>}

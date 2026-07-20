@@ -11,6 +11,7 @@ import { Responsibility } from '../../models/Responsibility.js';
 import { Contact } from '../../models/Contact.js';
 import { Campaign } from '../../models/Campaign.js';
 import { ApiError } from '../../utils/apiError.js';
+import { toE164 } from '../../utils/phone.js';
 import {
   canActivate,
   deriveStatus,
@@ -176,8 +177,12 @@ export async function setPhoneConfig(
   if (employee.type !== 'inbound') {
     throw ApiError.badRequest('Phone configuration only applies to inbound employees');
   }
-  employee.businessPhoneNumber = businessPhoneNumber;
-  employee.escalationNumber = escalationNumber;
+  const businessE164 = toE164(businessPhoneNumber);
+  const escalationE164 = toE164(escalationNumber);
+  if (!businessE164) throw ApiError.badRequest('Invalid business phone number');
+  if (!escalationE164) throw ApiError.badRequest('Invalid escalation phone number');
+  employee.businessPhoneNumber = businessE164;
+  employee.escalationNumber = escalationE164;
   await employee.save();
   await refreshStatus(employee);
   return toEmployeeDTO(employee);
@@ -186,7 +191,7 @@ export async function setPhoneConfig(
 export async function setBilling(
   orgId: string,
   id: string,
-  payment: { brand: string; last4: string },
+  payment: { cardType: string; brand: string; last4: string },
 ): Promise<AIEmployeeDTO> {
   const employee = await loadEmployee(orgId, id);
   employee.billingConfigured = true;
@@ -196,7 +201,12 @@ export async function setBilling(
     { _id: orgId },
     {
       billingStatus: 'active',
-      paymentMethod: { brand: payment.brand, last4: payment.last4, addedAt: new Date() },
+      paymentMethod: {
+        cardType: payment.cardType,
+        brand: payment.brand,
+        last4: payment.last4,
+        addedAt: new Date(),
+      },
     },
   );
   await refreshStatus(employee);

@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import type { WorkingHours } from '@vorizon/shared';
 import { campaignApi, employeeApi } from '../../lib/api/endpoints';
 import { apiErrorMessage } from '../../lib/api/client';
 import { Button, Card, EmptyState, Field, Input, Select, Spinner } from '../../components/ui';
+import { WorkingHoursEditor, defaultWorkingHours } from '../../components/WorkingHoursEditor';
 
 export function CampaignNewPage() {
   const navigate = useNavigate();
@@ -15,11 +17,21 @@ export function CampaignNewPage() {
   const [name, setName] = useState('');
   const [aiEmployeeId, setAiEmployeeId] = useState('');
   const [dailyCallLimit, setDailyCallLimit] = useState(100);
+  const [retryAttempts, setRetryAttempts] = useState(0);
+  const [retryInterval, setRetryInterval] = useState(60);
+  const [callingSchedule, setCallingSchedule] = useState<WorkingHours>(defaultWorkingHours);
   const [error, setError] = useState('');
 
   const create = useMutation({
     mutationFn: () =>
-      campaignApi.create({ name, aiEmployeeId, retryAttempts: 0, retryInterval: 60, dailyCallLimit }),
+      campaignApi.create({
+        name,
+        aiEmployeeId,
+        retryAttempts,
+        retryInterval,
+        dailyCallLimit,
+        callingSchedule,
+      }),
     onSuccess: () => navigate('/campaigns'),
     onError: (e) => setError(apiErrorMessage(e)),
   });
@@ -53,13 +65,34 @@ export function CampaignNewPage() {
               ))}
             </Select>
           </Field>
-          <Field label="Daily call limit">
-            <Input
-              type="number"
-              value={dailyCallLimit}
-              onChange={(e) => setDailyCallLimit(Number(e.target.value))}
-            />
-          </Field>
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Daily call limit">
+              <Input
+                type="number"
+                value={dailyCallLimit}
+                onChange={(e) => setDailyCallLimit(Number(e.target.value))}
+              />
+            </Field>
+            <Field label="Retry attempts">
+              <Input
+                type="number"
+                value={retryAttempts}
+                onChange={(e) => setRetryAttempts(Number(e.target.value))}
+              />
+            </Field>
+            <Field label="Retry interval (min)">
+              <Input
+                type="number"
+                value={retryInterval}
+                onChange={(e) => setRetryInterval(Number(e.target.value))}
+              />
+            </Field>
+          </div>
+          <WorkingHoursEditor
+            label="Calling Schedule / Working Hours"
+            value={callingSchedule}
+            onChange={setCallingSchedule}
+          />
           {error && <p className="mb-3 text-sm text-red-500">{error}</p>}
           <Button
             onClick={() => create.mutate()}

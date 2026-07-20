@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AIEmployeeDTO } from '@vorizon/shared';
 import { employeeApi } from '../../lib/api/endpoints';
 import { apiErrorMessage } from '../../lib/api/client';
+import type { WorkingHours } from '@vorizon/shared';
 import { Button, Card, Field, Input, Select, Spinner } from '../../components/ui';
+import { WorkingHoursEditor, defaultWorkingHours } from '../../components/WorkingHoursEditor';
 import { KnowledgeStep } from './steps/KnowledgeStep';
 import { ResponsibilitiesStep } from './steps/ResponsibilitiesStep';
 import { PhoneStep } from './steps/PhoneStep';
@@ -21,15 +23,33 @@ export function EmployeeWizardPage() {
   return <EmployeeSetup employeeId={id} />;
 }
 
+const LANGUAGES = [
+  { value: 'en-US', label: 'English (US)' },
+  { value: 'en-GB', label: 'English (UK)' },
+  { value: 'es-ES', label: 'Spanish' },
+  { value: 'hi-IN', label: 'Hindi' },
+  { value: 'fr-FR', label: 'French' },
+  { value: 'de-DE', label: 'German' },
+];
+const VOICES = [
+  { value: 'aria', label: 'Aria (Female)' },
+  { value: 'leo', label: 'Leo (Male)' },
+  { value: 'nova', label: 'Nova (Female)' },
+  { value: 'orion', label: 'Orion (Male)' },
+];
+
 function CreateEmployeeForm() {
   const navigate = useNavigate();
   const [type, setType] = useState<'inbound' | 'outbound'>('inbound');
   const [name, setName] = useState('');
   const [department, setDepartment] = useState('');
+  const [language, setLanguage] = useState('en-US');
+  const [voice, setVoice] = useState('aria');
+  const [workingHours, setWorkingHours] = useState<WorkingHours>(defaultWorkingHours);
   const [error, setError] = useState('');
 
   const mutation = useMutation({
-    mutationFn: () => employeeApi.create({ type, name, department, language: 'en-US', voice: 'default' }),
+    mutationFn: () => employeeApi.create({ type, name, department, language, voice, workingHours }),
     onSuccess: (e) => navigate(`/employees/${e.id}`),
     onError: (err) => setError(apiErrorMessage(err)),
   });
@@ -67,6 +87,27 @@ function CreateEmployeeForm() {
             placeholder="e.g. Front Desk"
           />
         </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Language">
+            <Select value={language} onChange={(e) => setLanguage(e.target.value)}>
+              {LANGUAGES.map((l) => (
+                <option key={l.value} value={l.value}>
+                  {l.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Voice">
+            <Select value={voice} onChange={(e) => setVoice(e.target.value)}>
+              {VOICES.map((v) => (
+                <option key={v.value} value={v.value}>
+                  {v.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <WorkingHoursEditor value={workingHours} onChange={setWorkingHours} />
         {error && <p className="mb-3 text-sm text-red-500">{error}</p>}
         <Button
           onClick={() => mutation.mutate()}

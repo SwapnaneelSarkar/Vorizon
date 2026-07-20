@@ -1,14 +1,26 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { loginSchema, refreshSchema, registerSchema } from '@vorizon/shared';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { validate } from '../../middleware/validate.js';
 import { requireAuth } from '../../middleware/auth.js';
+import { env } from '../../config/env.js';
 import * as ctrl from './auth.controller.js';
 
 export const authRoutes = Router();
 
-authRoutes.post('/register', validate(registerSchema), asyncHandler(ctrl.registerHandler));
-authRoutes.post('/login', validate(loginSchema), asyncHandler(ctrl.loginHandler));
+// Throttle credential endpoints to slow brute-force attempts (disabled in tests).
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => env.NODE_ENV === 'test',
+  message: { error: { code: 'RATE_LIMITED', message: 'Too many attempts, try again later' } },
+});
+
+authRoutes.post('/register', authLimiter, validate(registerSchema), asyncHandler(ctrl.registerHandler));
+authRoutes.post('/login', authLimiter, validate(loginSchema), asyncHandler(ctrl.loginHandler));
 authRoutes.post('/refresh', validate(refreshSchema), asyncHandler(ctrl.refreshHandler));
 authRoutes.post('/logout', requireAuth, asyncHandler(ctrl.logoutHandler));
 authRoutes.get('/me', requireAuth, asyncHandler(ctrl.meHandler));

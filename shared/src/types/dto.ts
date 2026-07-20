@@ -24,7 +24,7 @@ export interface OrganizationDTO {
   id: string;
   name: string;
   billingStatus: BillingStatus;
-  paymentMethod?: { brand: string; last4: string; addedAt: string };
+  paymentMethod?: { cardType: string; brand: string; last4: string; addedAt: string };
 }
 
 export interface AuthTokens {

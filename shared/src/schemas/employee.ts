@@ -31,6 +31,7 @@ export const phoneConfigSchema = z.object({
 export type PhoneConfigInput = z.infer<typeof phoneConfigSchema>;
 
 export const billingConfigSchema = z.object({
+  cardType: z.enum(['credit', 'debit']).default('credit'),
   brand: z.string().min(1).default('visa'),
   last4: z.string().regex(/^\d{4}$/, '4 digits'),
 });

@@ -8,6 +8,7 @@ const organizationSchema = new Schema(
     billingStatus: { type: String, enum: BILLING_STATUSES, default: 'inactive' },
     paymentMethod: {
       type: {
+        cardType: String,
         brand: String,
         last4: String,
         addedAt: Date,

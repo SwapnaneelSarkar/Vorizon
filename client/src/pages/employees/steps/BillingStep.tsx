@@ -6,13 +6,14 @@ import { apiErrorMessage } from '../../../lib/api/client';
 import { Button, Card, Field, Input, Select } from '../../../components/ui';
 
 export function BillingStep({ employee, onSaved }: { employee: AIEmployeeDTO; onSaved: () => void }) {
+  const [cardType, setCardType] = useState<'credit' | 'debit'>('credit');
   const [brand, setBrand] = useState('visa');
   const [last4, setLast4] = useState('4242');
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
 
   const save = useMutation({
-    mutationFn: () => employeeApi.setBilling(employee.id, brand, last4),
+    mutationFn: () => employeeApi.setBilling(employee.id, cardType, brand, last4),
     onSuccess: () => {
       setMsg('Payment method saved.');
       setError('');
@@ -28,7 +29,13 @@ export function BillingStep({ employee, onSaved }: { employee: AIEmployeeDTO; on
         Usage-based billing at <strong>$0.10 per conversation minute</strong>. No charge in this
         demo — a payment method is stored as a placeholder.
       </p>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Card type">
+          <Select value={cardType} onChange={(e) => setCardType(e.target.value as 'credit' | 'debit')}>
+            <option value="credit">Credit Card</option>
+            <option value="debit">Debit Card</option>
+          </Select>
+        </Field>
         <Field label="Card brand">
           <Select value={brand} onChange={(e) => setBrand(e.target.value)}>
             <option value="visa">Visa</option>

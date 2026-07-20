@@ -42,8 +42,8 @@ export const employeeApi = {
     unwrap<AIEmployeeDTO>(
       api.patch(`/ai-employees/${id}/phone`, { businessPhoneNumber, escalationNumber }),
     ),
-  setBilling: (id: string, brand: string, last4: string) =>
-    unwrap<AIEmployeeDTO>(api.patch(`/ai-employees/${id}/billing`, { brand, last4 })),
+  setBilling: (id: string, cardType: string, brand: string, last4: string) =>
+    unwrap<AIEmployeeDTO>(api.patch(`/ai-employees/${id}/billing`, { cardType, brand, last4 })),
   markTested: (id: string) => unwrap<AIEmployeeDTO>(api.post(`/ai-employees/${id}/mark-tested`)),
   activate: (id: string) => unwrap<AIEmployeeDTO>(api.post(`/ai-employees/${id}/activate`)),
   simulateInbound: (id: string, durationSec = 125) =>

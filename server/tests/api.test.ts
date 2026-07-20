@@ -97,6 +97,32 @@ describe('inbound employee lifecycle', () => {
   });
 });
 
+describe('employee phone validation', () => {
+  it('rejects invalid numbers and normalizes valid ones to E.164', async () => {
+    const token = await registerAndAuth();
+    const auth = (r: request.Test) => r.set('Authorization', `Bearer ${token}`);
+    const created = await auth(
+      request(app).post('/api/ai-employees').send({ type: 'inbound', name: 'Phone AI', department: 'Ops' }),
+    ).expect(201);
+    const id = created.body.data.id;
+
+    await auth(
+      request(app)
+        .patch(`/api/ai-employees/${id}/phone`)
+        .send({ businessPhoneNumber: '+1 415 555 0100', escalationNumber: 'nonsense' }),
+    ).expect(400);
+
+    // Indian (+91) and US both accepted and normalized.
+    const ok = await auth(
+      request(app)
+        .patch(`/api/ai-employees/${id}/phone`)
+        .send({ businessPhoneNumber: '+91 98765 43210', escalationNumber: '+1 (415) 555-0111' }),
+    ).expect(200);
+    expect(ok.body.data.businessPhoneNumber).toBe('+919876543210');
+    expect(ok.body.data.escalationNumber).toBe('+14155550111');
+  });
+});
+
 describe('contacts import', () => {
   it('flags invalid phone numbers', async () => {
     const token = await registerAndAuth();

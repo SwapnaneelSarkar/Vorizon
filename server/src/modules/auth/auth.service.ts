@@ -96,6 +96,7 @@ export async function me(userId: string) {
           billingStatus: org.billingStatus,
           paymentMethod: org.paymentMethod
             ? {
+                cardType: org.paymentMethod.cardType ?? '',
                 brand: org.paymentMethod.brand ?? '',
                 last4: org.paymentMethod.last4 ?? '',
                 addedAt: org.paymentMethod.addedAt?.toISOString() ?? '',

@@ -44,6 +44,7 @@ export async function setPhone(req: Request, res: Response) {
 
 export async function setBilling(req: Request, res: Response) {
   const dto = await svc.setBilling(req.user!.organizationId, req.params.id, {
+    cardType: req.body.cardType,
     brand: req.body.brand,
     last4: req.body.last4,
   });

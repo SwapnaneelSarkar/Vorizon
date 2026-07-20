@@ -16,6 +16,7 @@ export function InterviewStep({ employee, onSaved }: { employee: AIEmployeeDTO; 
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [tone, setTone] = useState(employee.tone ?? '');
+  const [behavior, setBehavior] = useState(employee.behavior ?? '');
   const [rules, setRules] = useState((employee.rules ?? []).join('\n'));
   const [error, setError] = useState('');
 
@@ -32,6 +33,7 @@ export function InterviewStep({ employee, onSaved }: { employee: AIEmployeeDTO; 
     mutationFn: () =>
       employeeApi.update(employee.id, {
         tone,
+        behavior,
         rules: rules.split('\n').map((r) => r.trim()).filter(Boolean),
       }),
     onError: (e) => setError(apiErrorMessage(e)),
@@ -96,7 +98,15 @@ export function InterviewStep({ employee, onSaved }: { employee: AIEmployeeDTO; 
           <Field label="Tone">
             <Input value={tone} onChange={(e) => setTone(e.target.value)} placeholder="friendly, concise" />
           </Field>
-          <Field label="Strict rules (one per line)">
+          <Field label="Behaviour">
+            <Textarea
+              rows={2}
+              value={behavior}
+              onChange={(e) => setBehavior(e.target.value)}
+              placeholder="Warm, patient, proactively offers help"
+            />
+          </Field>
+          <Field label="Rules / Instructions (one per line)">
             <Textarea
               rows={4}
               value={rules}
@@ -107,6 +117,10 @@ export function InterviewStep({ employee, onSaved }: { employee: AIEmployeeDTO; 
           <Button variant="secondary" onClick={() => saveConfig.mutate()} disabled={saveConfig.isPending}>
             {saveConfig.isPending ? 'Applying…' : 'Apply & re-test'}
           </Button>
+          <p className="mt-3 text-xs text-slate-400">
+            Tip: knowledge &amp; responsibilities can also be edited from their steps and take effect on
+            your next message.
+          </p>
         </Card>
 
         <Card>
