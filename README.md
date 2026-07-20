@@ -84,10 +84,23 @@ campaign launch, and dashboard aggregation.
 - **API:** global + per-auth rate limiting, gzip compression, `helmet`, `/api/ready` readiness probe, graceful shutdown
 - **AuthZ:** org-scoped RBAC (owner/admin/member), team management (`/organizations/users`), change-password, password policy
 - **Audit log:** sensitive actions (activate, launch, user changes) recorded to `AuditLog`
-- **Scalable campaigns:** launch is non-blocking — execution runs on a swappable in-process queue
-  (`campaignQueue`) that a BullMQ/Redis backend can replace without touching the rest of the app
+- **Scalable campaigns:** launch is non-blocking — execution runs on a swappable queue (`campaignQueue`)
+- **Redis (optional, set `REDIS_URL`):** Redis-backed rate limiting (shared across instances) + a
+  **durable BullMQ campaign queue** with workers. No `REDIS_URL` → in-memory/in-process fallbacks.
 - **Client:** route-level code-splitting + error boundary
 - **Ops:** `Dockerfile` (server) + `client/Dockerfile` (nginx) + GitHub Actions CI (typecheck → test → build)
+
+### Redis + workers
+```bash
+# Set REDIS_URL in .env (Redis Cloud / Upstash / self-hosted), then:
+npm run dev                     # API runs the campaign worker in-process (WORKER_IN_PROCESS=true)
+
+# For horizontal scale: set WORKER_IN_PROCESS=false on the API and run dedicated workers:
+npm run worker --workspace @vorizon/server        # (built)  node dist/worker.js
+npm run worker:dev --workspace @vorizon/server    # (dev)    tsx watch src/worker.ts
+```
+Note: BullMQ works best on a persistent Redis (Redis Cloud / self-hosted). On Upstash's free tier its
+per-day command limit can be exhausted by the worker's polling — prefer Redis for rate-limiting there.
 
 ## Docker
 ```bash

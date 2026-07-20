@@ -23,6 +23,14 @@ const envSchema = z
     INTERVIEW_MODEL: z.string().default('claude-sonnet-5'),
     RATE_USD_PER_MINUTE: z.coerce.number().default(0.1),
     RATE_LIMIT_MAX: z.coerce.number().default(300),
+    // Optional: enables Redis-backed rate limiting + durable BullMQ campaign queue.
+    REDIS_URL: z.string().optional().default(''),
+    // When Redis is enabled, run the campaign worker inside the API process.
+    // Set false to run dedicated workers (`npm run worker`) for horizontal scale.
+    WORKER_IN_PROCESS: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
   })
   .superRefine((val, ctx) => {
     // In production, refuse to boot with weak or default secrets.

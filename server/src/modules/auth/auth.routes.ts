@@ -1,21 +1,18 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
 import { changePasswordSchema, loginSchema, refreshSchema, registerSchema } from '@vorizon/shared';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { validate } from '../../middleware/validate.js';
 import { requireAuth } from '../../middleware/auth.js';
-import { env } from '../../config/env.js';
+import { makeRateLimiter } from '../../middleware/rateLimit.js';
 import * as ctrl from './auth.controller.js';
 
 export const authRoutes = Router();
 
 // Throttle credential endpoints to slow brute-force attempts (disabled in tests).
-const authLimiter = rateLimit({
+const authLimiter = makeRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 50,
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: () => env.NODE_ENV === 'test',
+  prefix: 'rl:auth:',
   message: { error: { code: 'RATE_LIMITED', message: 'Too many attempts, try again later' } },
 });
 

@@ -2,12 +2,12 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, { type Express } from 'express';
-import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 import { env } from './config/env.js';
 import { apiRouter } from './router.js';
 import { errorHandler, notFoundHandler } from './middleware/error.js';
+import { makeRateLimiter } from './middleware/rateLimit.js';
 import { logger } from './utils/logger.js';
 
 export function createApp(): Express {
@@ -27,12 +27,10 @@ export function createApp(): Express {
   // Global API rate limit (per-IP). Auth routes add a stricter limiter on top.
   app.use(
     '/api',
-    rateLimit({
+    makeRateLimiter({
       windowMs: 60 * 1000,
       max: env.RATE_LIMIT_MAX,
-      standardHeaders: true,
-      legacyHeaders: false,
-      skip: () => env.NODE_ENV === 'test',
+      prefix: 'rl:global:',
       message: { error: { code: 'RATE_LIMITED', message: 'Too many requests' } },
     }),
   );
