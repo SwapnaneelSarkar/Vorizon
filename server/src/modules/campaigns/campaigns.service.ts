@@ -1,10 +1,10 @@
-import type { CampaignDTO, CallOutcome, CreateCampaignInput } from '@vorizon/shared';
 import type { HydratedDocument } from 'mongoose';
+import type { CampaignDTO, CreateCampaignInput } from '@vorizon/shared';
 import { Campaign, type CampaignDoc } from '../../models/Campaign.js';
 import { Contact } from '../../models/Contact.js';
 import { ApiError } from '../../utils/apiError.js';
-import { handleCallEnded } from '../../voice/handleCallEvent.js';
 import { loadEmployee, refreshStatus } from '../aiEmployees/aiEmployees.service.js';
+import { campaignQueue } from './campaignQueue.js';
 
 type CampaignRecord = HydratedDocument<CampaignDoc>;
 
@@ -72,22 +72,16 @@ async function loadCampaign(orgId: string, id: string): Promise<CampaignRecord> 
   return campaign as CampaignRecord;
 }
 
-/** Deterministic mock outcome so runs are reproducible (no Math.random). */
-function mockOutcome(i: number): { outcome: CallOutcome; durationSec: number; escalated: boolean } {
-  const cycle = i % 5;
-  if (cycle === 3) return { outcome: 'no_answer', durationSec: 0, escalated: false };
-  if (cycle === 4) return { outcome: 'failed', durationSec: 0, escalated: false };
-  if (cycle === 2) return { outcome: 'transferred', durationSec: 90 + ((i * 7) % 120), escalated: true };
-  return { outcome: 'completed', durationSec: 60 + ((i * 13) % 180), escalated: false };
-}
-
 /**
- * Launch a campaign. Assigns valid org contacts, then synchronously simulates
- * calls up to the daily limit (Phase 1). Each simulated call flows through the
- * shared metering pipeline, producing Call + UsageRecord records.
+ * Launch a campaign. Validates prerequisites, assigns valid contacts, marks the
+ * campaign running, and hands execution to the (non-blocking) campaign queue so
+ * the request returns immediately. Clients poll GET /campaigns/:id for progress.
  */
 export async function launchCampaign(orgId: string, id: string): Promise<CampaignDTO> {
   const campaign = await loadCampaign(orgId, id);
+  if (campaign.status === 'running') {
+    throw ApiError.conflict('Campaign is already running');
+  }
   const employee = await loadEmployee(orgId, String(campaign.aiEmployeeId));
   if (!employee.tested) {
     throw ApiError.precondition('Cannot launch campaign', [
@@ -101,51 +95,26 @@ export async function launchCampaign(orgId: string, id: string): Promise<Campaig
     { campaignId: campaign._id },
   );
 
-  const contacts = await Contact.find({
+  const total = await Contact.countDocuments({
     organizationId: orgId,
     campaignId: campaign._id,
     validationStatus: 'valid',
   });
-  if (contacts.length === 0) {
+  if (total === 0) {
     throw ApiError.precondition('Cannot launch campaign', ['Upload at least one valid contact']);
   }
 
   campaign.status = 'running';
   campaign.stats = {
-    total: contacts.length,
+    total,
     attempted: 0,
     connected: 0,
     failed: 0,
   } as CampaignRecord['stats'];
   await campaign.save();
 
-  const toCall = contacts.slice(0, campaign.dailyCallLimit);
-  for (let i = 0; i < toCall.length; i++) {
-    const contact = toCall[i];
-    const { outcome, durationSec, escalated } = mockOutcome(i);
-    await handleCallEnded({
-      externalCallId: `mock-outbound-${String(campaign._id)}-${i}`,
-      status: 'ended',
-      direction: 'outbound',
-      organizationId: orgId,
-      aiEmployeeId: String(employee._id),
-      from: '+18005550100',
-      to: contact.phone,
-      contactId: String(contact._id),
-      campaignId: String(campaign._id),
-      durationSec,
-      outcome,
-      escalated,
-    });
-  }
-
-  // Mark completed if everyone eligible was called this run.
-  const fresh = await loadCampaign(orgId, id);
-  if ((fresh.stats?.attempted ?? 0) >= (fresh.stats?.total ?? 0)) {
-    fresh.status = 'completed';
-    await fresh.save();
-  }
-  return toDTO(fresh);
+  campaignQueue.enqueue(orgId, id);
+  return toDTO(campaign);
 }
 
 export async function pauseCampaign(orgId: string, id: string): Promise<CampaignDTO> {

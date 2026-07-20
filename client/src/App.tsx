@@ -1,33 +1,53 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './routes/ProtectedRoute';
-import { LoginPage } from './pages/Login';
-import { RegisterPage } from './pages/Register';
-import { DashboardPage } from './pages/Dashboard';
-import { EmployeesPage } from './pages/employees/EmployeesList';
-import { EmployeeWizardPage } from './pages/employees/EmployeeWizard';
-import { ContactsPage } from './pages/Contacts';
-import { CampaignsPage } from './pages/campaigns/CampaignsList';
-import { CampaignNewPage } from './pages/campaigns/CampaignNew';
-import { AnalyticsPage } from './pages/Analytics';
-import { BillingPage } from './pages/Billing';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { Spinner } from './components/ui';
+
+const LoginPage = lazy(() => import('./pages/Login').then((m) => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('./pages/Register').then((m) => ({ default: m.RegisterPage })));
+const DashboardPage = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.DashboardPage })));
+const EmployeesPage = lazy(() =>
+  import('./pages/employees/EmployeesList').then((m) => ({ default: m.EmployeesPage })),
+);
+const EmployeeWizardPage = lazy(() =>
+  import('./pages/employees/EmployeeWizard').then((m) => ({ default: m.EmployeeWizardPage })),
+);
+const ContactsPage = lazy(() => import('./pages/Contacts').then((m) => ({ default: m.ContactsPage })));
+const CampaignsPage = lazy(() =>
+  import('./pages/campaigns/CampaignsList').then((m) => ({ default: m.CampaignsPage })),
+);
+const CampaignNewPage = lazy(() =>
+  import('./pages/campaigns/CampaignNew').then((m) => ({ default: m.CampaignNewPage })),
+);
+const AnalyticsPage = lazy(() => import('./pages/Analytics').then((m) => ({ default: m.AnalyticsPage })));
+const BillingPage = lazy(() => import('./pages/Billing').then((m) => ({ default: m.BillingPage })));
+const SettingsPage = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
+
+const protect = (el: JSX.Element) => <ProtectedRoute>{el}</ProtectedRoute>;
 
 export function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+    <ErrorBoundary>
+      <Suspense fallback={<Spinner />}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
-      <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/employees" element={<ProtectedRoute><EmployeesPage /></ProtectedRoute>} />
-      <Route path="/employees/new" element={<ProtectedRoute><EmployeeWizardPage /></ProtectedRoute>} />
-      <Route path="/employees/:id" element={<ProtectedRoute><EmployeeWizardPage /></ProtectedRoute>} />
-      <Route path="/contacts" element={<ProtectedRoute><ContactsPage /></ProtectedRoute>} />
-      <Route path="/campaigns" element={<ProtectedRoute><CampaignsPage /></ProtectedRoute>} />
-      <Route path="/campaigns/new" element={<ProtectedRoute><CampaignNewPage /></ProtectedRoute>} />
-      <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
-      <Route path="/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
+          <Route path="/" element={protect(<DashboardPage />)} />
+          <Route path="/employees" element={protect(<EmployeesPage />)} />
+          <Route path="/employees/new" element={protect(<EmployeeWizardPage />)} />
+          <Route path="/employees/:id" element={protect(<EmployeeWizardPage />)} />
+          <Route path="/contacts" element={protect(<ContactsPage />)} />
+          <Route path="/campaigns" element={protect(<CampaignsPage />)} />
+          <Route path="/campaigns/new" element={protect(<CampaignNewPage />)} />
+          <Route path="/analytics" element={protect(<AnalyticsPage />)} />
+          <Route path="/billing" element={protect(<BillingPage />)} />
+          <Route path="/settings" element={protect(<SettingsPage />)} />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   );
 }

@@ -79,6 +79,23 @@ an idempotent `UsageRecord` (`minutes = ceil(durationSec/60)`, `amount = minutes
 validation. A full HTTP smoke run also exercises inbound activation + call simulation, outbound
 campaign launch, and dashboard aggregation.
 
-## Phase 2 (not built)
-Real voice via `VapiVoiceEngine` (`VOICE_PROVIDER=vapi`), Stripe charging, embedding-based RAG over
-knowledge chunks, CRM contact import, Google OAuth.
+## Production hardening (built, no third-party services required)
+- **Config safety:** server refuses to boot in production with weak/default JWT secrets
+- **API:** global + per-auth rate limiting, gzip compression, `helmet`, `/api/ready` readiness probe, graceful shutdown
+- **AuthZ:** org-scoped RBAC (owner/admin/member), team management (`/organizations/users`), change-password, password policy
+- **Audit log:** sensitive actions (activate, launch, user changes) recorded to `AuditLog`
+- **Scalable campaigns:** launch is non-blocking — execution runs on a swappable in-process queue
+  (`campaignQueue`) that a BullMQ/Redis backend can replace without touching the rest of the app
+- **Client:** route-level code-splitting + error boundary
+- **Ops:** `Dockerfile` (server) + `client/Dockerfile` (nginx) + GitHub Actions CI (typecheck → test → build)
+
+## Docker
+```bash
+docker build -t vorizon-server .
+docker build -f client/Dockerfile -t vorizon-client .
+```
+
+## Phase 2 (needs third-party integration — intentionally deferred)
+Real voice via `VapiVoiceEngine` (`VOICE_PROVIDER=vapi`), Stripe charging, S3 uploads, Redis-backed
+queue/rate-limit, embedding-based RAG, CRM import, Google OAuth, email (verification/reset), and
+telephony compliance (DNC/TCPA/consent).

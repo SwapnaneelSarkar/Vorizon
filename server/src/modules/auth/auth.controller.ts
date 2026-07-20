@@ -25,3 +25,8 @@ export async function meHandler(req: Request, res: Response) {
   const result = await authService.me(req.user!.userId);
   res.json({ data: result });
 }
+
+export async function changePasswordHandler(req: Request, res: Response) {
+  await authService.changePassword(req.user!.userId, req.body.currentPassword, req.body.newPassword);
+  res.status(204).send();
+}

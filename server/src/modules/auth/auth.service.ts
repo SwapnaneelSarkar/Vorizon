@@ -83,6 +83,21 @@ export async function logout(userId: string) {
   await User.updateOne({ _id: userId }, { refreshTokenHash: null });
 }
 
+export async function changePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+) {
+  const user = await User.findById(userId);
+  if (!user) throw ApiError.notFound('User not found');
+  const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!ok) throw ApiError.unauthorized('Current password is incorrect');
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  // Invalidate other sessions by clearing the stored refresh token.
+  user.refreshTokenHash = null;
+  await user.save();
+}
+
 export async function me(userId: string) {
   const user = await User.findById(userId);
   if (!user) throw ApiError.notFound('User not found');

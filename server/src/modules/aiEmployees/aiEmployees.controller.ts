@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { recordAudit } from '../../utils/audit.js';
 import * as svc from './aiEmployees.service.js';
 
 export async function create(req: Request, res: Response) {
@@ -58,5 +59,12 @@ export async function markTested(req: Request, res: Response) {
 
 export async function activate(req: Request, res: Response) {
   const dto = await svc.activateEmployee(req.user!.organizationId, req.params.id);
+  await recordAudit({
+    organizationId: req.user!.organizationId,
+    actorUserId: req.user!.userId,
+    action: 'employee.activate',
+    targetType: 'AIEmployee',
+    targetId: dto.id,
+  });
   res.json({ data: dto });
 }

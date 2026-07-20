@@ -15,6 +15,7 @@ import type {
   SetResponsibilitiesInput,
   UpdateEmployeeInput,
   UsageSummary,
+  UserDTO,
 } from '@vorizon/shared';
 import { api } from './client';
 
@@ -26,6 +27,18 @@ export const authApi = {
   login: (input: LoginInput) => unwrap<AuthResponse>(api.post('/auth/login', input)),
   me: () => unwrap<{ user: AuthResponse['user']; organization: unknown }>(api.get('/auth/me')),
   logout: () => api.post('/auth/logout'),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.post('/auth/change-password', { currentPassword, newPassword }),
+};
+
+// ---- team / users ----
+export const userApi = {
+  list: () => unwrap<UserDTO[]>(api.get('/organizations/users')),
+  create: (input: { name: string; email: string; role: string; password?: string }) =>
+    unwrap<{ user: UserDTO; tempPassword?: string }>(api.post('/organizations/users', input)),
+  updateRole: (userId: string, role: string) =>
+    unwrap<UserDTO>(api.patch(`/organizations/users/${userId}/role`, { role })),
+  remove: (userId: string) => api.delete(`/organizations/users/${userId}`),
 };
 
 // ---- employees ----

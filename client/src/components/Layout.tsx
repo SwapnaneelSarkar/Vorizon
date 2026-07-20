@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, PhoneOutgoing, Contact, BarChart3, CreditCard, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, PhoneOutgoing, Contact, BarChart3, CreditCard, Settings, LogOut } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { authApi } from '../lib/api/endpoints';
@@ -12,6 +12,7 @@ const nav = [
   { to: '/contacts', label: 'Contacts', icon: Contact },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/billing', label: 'Billing', icon: CreditCard },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {

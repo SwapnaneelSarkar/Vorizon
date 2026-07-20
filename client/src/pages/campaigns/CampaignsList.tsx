@@ -9,7 +9,13 @@ import { useState } from 'react';
 export function CampaignsPage() {
   const qc = useQueryClient();
   const [error, setError] = useState('');
-  const { data, isLoading } = useQuery({ queryKey: ['campaigns'], queryFn: campaignApi.list });
+  const { data, isLoading } = useQuery({
+    queryKey: ['campaigns'],
+    queryFn: campaignApi.list,
+    // Poll while any campaign is actively running so progress updates live.
+    refetchInterval: (query) =>
+      query.state.data?.some((c) => c.status === 'running') ? 1500 : false,
+  });
 
   const launch = useMutation({
     mutationFn: (id: string) => campaignApi.launch(id),

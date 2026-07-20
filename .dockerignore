@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+**/dist
+**/build
+.git
+.github
+*.log
+.env
+.env.local
+server/uploads/*
+coverage
+.vite
+PLAN.md
+PLAN_DETAILED.md
