@@ -1,0 +1,31 @@
+{
+  "name": "vorizon",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vorizon — AI Employee Platform (build, train, test & deploy AI employees for inbound/outbound calls)",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "build:shared": "npm run build --workspace @vorizon/shared",
+    "dev": "npm run build:shared && concurrently -n server,client -c blue,magenta \"npm run dev --workspace @vorizon/server\" \"npm run dev --workspace @vorizon/client\"",
+    "dev:server": "npm run dev --workspace @vorizon/server",
+    "dev:client": "npm run dev --workspace @vorizon/client",
+    "build": "npm run build:shared && npm run build --workspace @vorizon/server && npm run build --workspace @vorizon/client",
+    "typecheck": "npm run build:shared && npm run typecheck --workspace @vorizon/server && npm run typecheck --workspace @vorizon/client",
+    "test": "npm run build:shared && npm run test --workspace @vorizon/server",
+    "seed": "npm run seed --workspace @vorizon/server",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

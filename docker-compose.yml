@@ -1,0 +1,12 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: vorizon-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - vorizon_mongo_data:/data/db
+
+volumes:
+  vorizon_mongo_data:
