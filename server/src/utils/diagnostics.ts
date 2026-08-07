@@ -26,7 +26,7 @@ export function logBootDiagnostics(entrypoint: string): void {
       email: Boolean(env.RESEND_API_KEY),
       payments: mode,
       paymentsWebhookSecret: Boolean(env.RAZORPAY_WEBHOOK_SECRET),
-      interviewLlm: Boolean(env.ANTHROPIC_API_KEY),
+      interviewLlm: env.ANTHROPIC_API_KEY ? 'anthropic' : env.OPENAI_API_KEY ? 'openai' : 'echo',
       workerInProcess: env.WORKER_IN_PROCESS,
     },
     `Boot: ${entrypoint} (payments=${mode}, voice=${env.VOICE_PROVIDER}, firebase=${isFirebaseEnabled ? 'on' : 'off'})`,

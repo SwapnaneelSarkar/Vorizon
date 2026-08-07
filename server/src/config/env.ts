@@ -25,6 +25,9 @@ const envSchema = z
     VOICE_PROVIDER: z.enum(['mock', 'vapi', 'retell']).default('mock'),
     ANTHROPIC_API_KEY: z.string().optional().default(''),
     INTERVIEW_MODEL: z.string().default('claude-sonnet-5'),
+    // Alternative interview LLM when no Anthropic key is set.
+    OPENAI_API_KEY: z.string().optional().default(''),
+    OPENAI_MODEL: z.string().default('gpt-4o-mini'),
     RATE_USD_PER_MINUTE: z.coerce.number().default(0.1),
     // Public base URL of the web app (used in email links).
     APP_BASE_URL: z.string().default('http://localhost:5173'),

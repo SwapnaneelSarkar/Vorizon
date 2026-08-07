@@ -16,8 +16,10 @@ process.env.FIREBASE_PROJECT_ID = '';
 process.env.FIREBASE_SERVICE_ACCOUNT = '';
 delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-// Likewise force email OFF so tests never send through a real Resend key.
+// Likewise force email + interview LLMs OFF so tests never call live services.
 process.env.RESEND_API_KEY = '';
+process.env.ANTHROPIC_API_KEY = '';
+process.env.OPENAI_API_KEY = '';
 
 let mongod: MongoMemoryServer;
 
