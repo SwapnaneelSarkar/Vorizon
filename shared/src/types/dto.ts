@@ -182,5 +182,6 @@ export interface PaymentOrderDTO {
 }
 
 export interface ApiError {
-  error: { code: string; message: string; details?: unknown };
+  /** requestId correlates the response with its server log lines. */
+  error: { code: string; message: string; details?: unknown; requestId?: string };
 }

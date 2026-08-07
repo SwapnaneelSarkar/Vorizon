@@ -25,9 +25,18 @@ let db: Firestore | null = null;
 function credentials() {
   const sa = env.FIREBASE_SERVICE_ACCOUNT;
   if (!sa) return applicationDefault();
-  // Inline JSON or a path to a service-account key file.
-  const json = sa.trimStart().startsWith('{') ? sa : readFileSync(sa, 'utf8');
-  return cert(JSON.parse(json));
+  try {
+    // Inline JSON or a path to a service-account key file.
+    const json = sa.trimStart().startsWith('{') ? sa : readFileSync(sa, 'utf8');
+    return cert(JSON.parse(json));
+  } catch {
+    // Never rethrow raw fs/parse errors here: their message/stack/path embed the
+    // env value itself, which may be the service-account secret (e.g. when set
+    // to base64 JSON instead of a path) — and would land verbatim in {err} logs.
+    throw new Error(
+      'FIREBASE_SERVICE_ACCOUNT is neither valid inline JSON nor a readable key-file path (value withheld from logs)',
+    );
+  }
 }
 
 /** Shared Firestore handle. Null when Firebase is off. */

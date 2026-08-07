@@ -14,9 +14,11 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { createApp } from './app.js';
 import { ensureDb } from './config/db.js';
 import { drainDueJobs } from './modules/campaigns/campaignWorker.js';
+import { logBootDiagnostics } from './utils/diagnostics.js';
 import { logger } from './utils/logger.js';
 
 const app = createApp();
+logBootDiagnostics('cloud-functions');
 
 export const api = onRequest(
   { region: 'us-central1', timeoutSeconds: 120, memory: '512MiB', maxInstances: 4 },

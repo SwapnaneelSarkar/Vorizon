@@ -3,12 +3,11 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
-import { pinoHttp } from 'pino-http';
 import { env } from './config/env.js';
 import { apiRouter } from './router.js';
 import { errorHandler, notFoundHandler } from './middleware/error.js';
+import { buildHttpLogger } from './middleware/httpLogger.js';
 import { makeRateLimiter } from './middleware/rateLimit.js';
-import { logger } from './utils/logger.js';
 
 export function createApp(): Express {
   const app = express();
@@ -16,9 +15,16 @@ export function createApp(): Express {
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(compression());
-  app.use(cors({ origin: env.CORS_ORIGIN.split(','), credentials: true }));
+  // Expose X-Request-Id so the browser client can read the correlation id.
+  app.use(
+    cors({
+      origin: env.CORS_ORIGIN.split(','),
+      credentials: true,
+      exposedHeaders: ['X-Request-Id'],
+    }),
+  );
   if (env.NODE_ENV !== 'test') {
-    app.use(pinoHttp({ logger }));
+    app.use(buildHttpLogger());
   }
   // Keep the raw body around for webhook signature verification (Razorpay, Retell).
   app.use(

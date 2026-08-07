@@ -59,12 +59,21 @@ class FirestoreStore implements Store {
  * otherwise. Always skipped in tests.
  */
 export function makeRateLimiter(opts: Partial<Options> & { prefix?: string }): ReturnType<typeof rateLimit> {
-  const { prefix, ...rest } = opts;
+  const { prefix, message, ...rest } = opts;
   const db = getDb();
+  const body = (message as { error?: Record<string, unknown> } | undefined) ?? {
+    error: { code: 'RATE_LIMITED', message: 'Too many requests' },
+  };
   return rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     skip: () => env.NODE_ENV === 'test',
+    // Custom handler so 429s carry the requestId like every other error body.
+    handler: (req, res) => {
+      res
+        .status(429)
+        .json({ ...body, error: { ...body.error, requestId: (req as { id?: string }).id } });
+    },
     ...(db ? { store: new FirestoreStore(db, prefix ?? 'rl:') } : {}),
     ...rest,
   });

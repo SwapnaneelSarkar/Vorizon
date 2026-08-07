@@ -9,6 +9,8 @@ const DEV_REFRESH_DEFAULT = 'dev-refresh-secret-change-me';
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    // Runtime log verbosity — change without a code deploy (e.g. debug to chase an issue).
+    LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
     // Serverless runtimes may set PORT to a unix socket path; fall back cleanly
     // (the value is only used by the long-running server's app.listen).
     PORT: z.coerce.number().catch(4000).default(4000),

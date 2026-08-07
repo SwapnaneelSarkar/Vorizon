@@ -64,7 +64,9 @@ export class RetellClient {
       const text = await res.text();
       if (!res.ok) {
         logger.error({ path, status: res.status, body: text.slice(0, 500) }, 'Retell API call failed');
-        throw new RetellApiError(res.status, text);
+        // Truncate what the error carries: it gets serialized in full at every
+        // {err} log sink, and third-party bodies are outside our redact policy.
+        throw new RetellApiError(res.status, text.slice(0, 500));
       }
       return (text ? JSON.parse(text) : {}) as T;
     } catch (err) {

@@ -4,9 +4,11 @@ import { connectDb, disconnectDb } from './config/db.js';
 import { env } from './config/env.js';
 import { closeFirebase, isFirebaseEnabled } from './config/firebase.js';
 import { startCampaignWorker, stopCampaignWorker } from './modules/campaigns/campaignWorker.js';
+import { logBootDiagnostics } from './utils/diagnostics.js';
 import { logger } from './utils/logger.js';
 
 async function main() {
+  logBootDiagnostics('server');
   await connectDb();
 
   // With Firebase enabled, optionally run the campaign worker in-process (single
