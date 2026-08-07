@@ -22,3 +22,5 @@ firebase-service-account.json
 # firebase functions build artifacts + secrets
 functions/index.js
 functions/node_modules/
+.vercel
+.env*
