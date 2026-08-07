@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../lib/api/endpoints';
 import { apiErrorMessage } from '../lib/api/client';
 import { useAuthStore } from '../store/authStore';
+import { AuthShell } from '../components/AuthShell';
 import { Button, Card, Field, Input } from '../components/ui';
 
 export function RegisterPage() {
@@ -31,46 +32,52 @@ export function RegisterPage() {
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-blue/10 to-brand-purple/10 p-4">
-      <Card className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-blue to-brand-purple font-bold text-white">
-            V
-          </div>
-          <h1 className="text-xl font-bold text-slate-800">Create your business account</h1>
-          <p className="text-sm text-slate-500">Start building AI employees in minutes</p>
+    <AuthShell>
+      <Card className="p-8">
+        <div className="mb-7">
+          <h1 className="text-xl font-bold text-slate-900">Create your account</h1>
+          <p className="mt-1 text-sm text-slate-500">Start building AI employees in minutes</p>
         </div>
         <form onSubmit={submit}>
           <Field label="Business name">
-            <Input value={form.orgName} onChange={set('orgName')} required />
+            <Input value={form.orgName} onChange={set('orgName')} placeholder="Acme Inc." required />
           </Field>
           <Field label="Your name">
-            <Input value={form.name} onChange={set('name')} required />
+            <Input value={form.name} onChange={set('name')} placeholder="Jane Doe" required />
           </Field>
-          <Field label="Email">
-            <Input type="email" value={form.email} onChange={set('email')} required />
+          <Field label="Work email">
+            <Input
+              type="email"
+              value={form.email}
+              onChange={set('email')}
+              placeholder="you@company.com"
+              autoComplete="email"
+              required
+            />
           </Field>
-          <Field label="Password">
+          <Field label="Password (min 8, letters + numbers)">
             <Input
               type="password"
               value={form.password}
               onChange={set('password')}
+              placeholder="••••••••"
+              autoComplete="new-password"
               minLength={8}
               required
             />
           </Field>
           {error && <p className="mb-3 text-sm text-red-500">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Creating…' : 'Create account'}
+            {loading ? 'Creating account…' : 'Create account'}
           </Button>
         </form>
         <p className="mt-4 text-center text-sm text-slate-500">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-brand-blue">
+          <Link to="/login" className="font-medium text-brand-blue hover:underline">
             Sign in
           </Link>
         </p>
       </Card>
-    </div>
+    </AuthShell>
   );
 }

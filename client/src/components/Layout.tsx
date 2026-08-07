@@ -1,9 +1,21 @@
-import { LayoutDashboard, Users, PhoneOutgoing, Contact, BarChart3, CreditCard, Settings, LogOut } from 'lucide-react';
-import type { ReactNode } from 'react';
+import {
+  BarChart3,
+  Contact,
+  CreditCard,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  PhoneOutgoing,
+  Settings,
+  Users,
+  X,
+} from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { authApi } from '../lib/api/endpoints';
 import { useAuthStore } from '../store/authStore';
 import { cn } from '../lib/utils';
+import { Toaster } from './ui';
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -15,7 +27,17 @@ const nav = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
-export function Layout({ children }: { children: ReactNode }) {
+function initials(name?: string) {
+  if (!name) return '?';
+  return name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
+function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { user, clear } = useAuthStore();
   const navigate = useNavigate();
 
@@ -30,49 +52,121 @@ export function Layout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="flex w-60 flex-col border-r border-slate-200 bg-white">
-        <div className="flex items-center gap-2 px-6 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-blue to-brand-purple text-sm font-bold text-white">
-            V
-          </div>
-          <span className="text-lg font-bold text-slate-800">Vorizon</span>
+    <div className="flex h-full flex-col bg-slate-900">
+      <div className="flex items-center gap-2.5 px-6 py-6">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-blue to-brand-purple text-sm font-bold text-white shadow-md">
+          V
         </div>
-        <nav className="flex-1 space-y-1 px-3">
-          {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
-                  isActive
-                    ? 'bg-brand-blue/10 text-brand-blue'
-                    : 'text-slate-600 hover:bg-slate-100',
-                )
-              }
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="border-t border-slate-200 p-3">
-          <div className="px-3 py-2 text-sm">
-            <p className="font-medium text-slate-700">{user?.name}</p>
-            <p className="text-xs text-slate-400">{user?.email}</p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+        <div>
+          <span className="block text-base font-bold leading-tight text-white">Vorizon</span>
+          <span className="block text-[11px] font-medium text-slate-400">AI Employee Platform</span>
+        </div>
+      </div>
+
+      <nav className="flex-1 space-y-0.5 px-3">
+        <p className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+          Workspace
+        </p>
+        {nav.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              cn(
+                'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-white/10 text-white'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-100',
+              )
+            }
           >
-            <LogOut className="h-4 w-4" />
-            Log out
-          </button>
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-gradient-to-b from-brand-blue to-brand-purple" />
+                )}
+                <item.icon className="h-4 w-4 shrink-0" />
+                {item.label}
+              </>
+            )}
+          </NavLink>
+        ))}
+      </nav>
+
+      <div className="border-t border-white/10 p-3">
+        <div className="flex items-center gap-3 rounded-lg px-3 py-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-blue to-brand-purple text-xs font-bold text-white">
+            {initials(user?.name)}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-white">{user?.name}</p>
+            <p className="truncate text-xs text-slate-500">{user?.email}</p>
+          </div>
         </div>
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-100"
+        >
+          <LogOut className="h-4 w-4" />
+          Log out
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function Layout({ children }: { children: ReactNode }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  return (
+    <div className="flex min-h-screen">
+      {/* Desktop sidebar */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 lg:block">
+        <Sidebar />
       </aside>
-      <main className="flex-1 overflow-auto bg-slate-50 p-8">{children}</main>
+
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div className="absolute inset-0 bg-slate-900/50" onClick={() => setMobileOpen(false)} />
+          <aside className="absolute inset-y-0 left-0 w-64 animate-fade-up">
+            <Sidebar onNavigate={() => setMobileOpen(false)} />
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="absolute right-3 top-5 text-slate-400 hover:text-white"
+              aria-label="Close menu"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </aside>
+        </div>
+      )}
+
+      <div className="flex min-w-0 flex-1 flex-col lg:pl-60">
+        {/* Mobile top bar */}
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-brand-blue to-brand-purple text-xs font-bold text-white">
+              V
+            </div>
+            <span className="font-bold text-slate-800">Vorizon</span>
+          </div>
+        </header>
+
+        <main className="flex-1 bg-slate-50 p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto w-full max-w-6xl animate-fade-up">{children}</div>
+        </main>
+      </div>
+      <Toaster />
     </div>
   );
 }

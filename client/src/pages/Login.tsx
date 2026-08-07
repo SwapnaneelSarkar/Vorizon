@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../lib/api/endpoints';
 import { apiErrorMessage } from '../lib/api/client';
 import { useAuthStore } from '../store/authStore';
+import { AuthShell } from '../components/AuthShell';
 import { Button, Card, Field, Input } from '../components/ui';
 
 function ForgotPassword({ onBack }: { onBack: () => void }) {
@@ -44,7 +45,7 @@ function ForgotPassword({ onBack }: { onBack: () => void }) {
   if (step === 'done') {
     return (
       <div className="text-center">
-        <p className="mb-4 text-sm text-green-600">
+        <p className="mb-4 text-sm text-emerald-600">
           Password updated. Sign in with your new password.
         </p>
         <Button onClick={onBack}>Back to sign in</Button>
@@ -64,6 +65,7 @@ function ForgotPassword({ onBack }: { onBack: () => void }) {
             onChange={(e) => setOtp(e.target.value)}
             inputMode="numeric"
             maxLength={6}
+            placeholder="123456"
             required
           />
         </Field>
@@ -72,6 +74,7 @@ function ForgotPassword({ onBack }: { onBack: () => void }) {
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="••••••••"
             required
           />
         </Field>
@@ -79,7 +82,11 @@ function ForgotPassword({ onBack }: { onBack: () => void }) {
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? 'Resetting…' : 'Reset password'}
         </Button>
-        <button type="button" onClick={onBack} className="mt-3 w-full text-sm text-slate-500">
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-3 w-full text-sm text-slate-500 hover:text-slate-700"
+        >
           Back to sign in
         </button>
       </form>
@@ -92,13 +99,23 @@ function ForgotPassword({ onBack }: { onBack: () => void }) {
         Enter your account email and we&apos;ll send a reset code.
       </p>
       <Field label="Email">
-        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@company.com"
+          required
+        />
       </Field>
       {error && <p className="mb-3 text-sm text-red-500">{error}</p>}
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? 'Sending…' : 'Send reset code'}
       </Button>
-      <button type="button" onClick={onBack} className="mt-3 w-full text-sm text-slate-500">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mt-3 w-full text-sm text-slate-500 hover:text-slate-700"
+      >
         Back to sign in
       </button>
     </form>
@@ -108,8 +125,8 @@ function ForgotPassword({ onBack }: { onBack: () => void }) {
 export function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
-  const [email, setEmail] = useState('demo@vorizon.ai');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [forgot, setForgot] = useState(false);
@@ -130,15 +147,14 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-blue/10 to-brand-purple/10 p-4">
-      <Card className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-blue to-brand-purple font-bold text-white">
-            V
-          </div>
-          <h1 className="text-xl font-bold text-slate-800">Welcome to Vorizon</h1>
-          <p className="text-sm text-slate-500">
-            {forgot ? 'Reset your password' : 'Sign in to your AI employee platform'}
+    <AuthShell>
+      <Card className="p-8">
+        <div className="mb-7">
+          <h1 className="text-xl font-bold text-slate-900">
+            {forgot ? 'Reset your password' : 'Welcome back'}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {forgot ? 'We’ll get you back in shortly' : 'Sign in to your Vorizon workspace'}
           </p>
         </div>
         {forgot ? (
@@ -147,13 +163,22 @@ export function LoginPage() {
           <>
             <form onSubmit={submit}>
               <Field label="Email">
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  autoComplete="email"
+                  required
+                />
               </Field>
               <Field label="Password">
                 <Input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
                   required
                 />
               </Field>
@@ -165,19 +190,19 @@ export function LoginPage() {
             <button
               type="button"
               onClick={() => setForgot(true)}
-              className="mt-3 w-full text-center text-sm font-medium text-brand-blue"
+              className="mt-4 w-full text-center text-sm font-medium text-brand-blue hover:underline"
             >
               Forgot password?
             </button>
             <p className="mt-2 text-center text-sm text-slate-500">
               No account?{' '}
-              <Link to="/register" className="font-medium text-brand-blue">
+              <Link to="/register" className="font-medium text-brand-blue hover:underline">
                 Create one
               </Link>
             </p>
           </>
         )}
       </Card>
-    </div>
+    </AuthShell>
   );
 }

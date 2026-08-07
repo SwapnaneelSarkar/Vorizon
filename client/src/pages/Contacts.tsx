@@ -1,10 +1,21 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PhoneOff, Trash2, Upload } from 'lucide-react';
+import { Contact as ContactIcon, PhoneOff, Trash2, Upload } from 'lucide-react';
 import type { ContactImportResult } from '@vorizon/shared';
 import { complianceApi, contactApi } from '../lib/api/endpoints';
 import { apiErrorMessage } from '../lib/api/client';
-import { Badge, Button, Card, EmptyState, Field, Input, Spinner } from '../components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  ConfirmButton,
+  EmptyState,
+  Field,
+  Input,
+  PageHeader,
+  Spinner,
+  toast,
+} from '../components/ui';
 
 export function ContactsPage() {
   const qc = useQueryClient();
@@ -20,6 +31,7 @@ export function ContactsPage() {
     onSuccess: (res) => {
       setImportResult(res);
       setError('');
+      toast.success(`Imported ${res.imported} contact${res.imported === 1 ? '' : 's'}`);
       invalidate();
     },
     onError: (e) => setError(apiErrorMessage(e)),
@@ -38,34 +50,43 @@ export function ContactsPage() {
     onSuccess: () => {
       setForm({ name: '', phone: '', email: '', company: '', tags: '', notes: '' });
       setError('');
+      toast.success('Contact added');
       invalidate();
     },
     onError: (e) => setError(apiErrorMessage(e)),
   });
 
-  const remove = useMutation({ mutationFn: (id: string) => contactApi.remove(id), onSuccess: invalidate });
+  const remove = useMutation({
+    mutationFn: (id: string) => contactApi.remove(id),
+    onSuccess: () => {
+      toast.success('Contact deleted');
+      invalidate();
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
 
   const optOut = useMutation({
     mutationFn: (phone: string) => complianceApi.optOut(phone),
     onSuccess: () => {
+      toast.success('Number opted out and added to the Do-Not-Call list');
       invalidate();
       qc.invalidateQueries({ queryKey: ['dnc'] });
     },
-    onError: (e) => setError(apiErrorMessage(e)),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-bold text-slate-800">Contacts</h1>
-      <p className="mb-6 text-sm text-slate-500">Upload or add contacts for outbound campaigns</p>
+      <PageHeader title="Contacts" description="Upload or add contacts for outbound campaigns" />
 
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
-          <h2 className="mb-3 font-semibold text-slate-800">Upload CSV / XLSX</h2>
-          <p className="mb-3 text-sm text-slate-500">
-            Columns: name, phone (required), email, company, tags, notes. Phone numbers are validated.
+          <h2 className="mb-3 font-semibold text-slate-900">Upload CSV / XLSX</h2>
+          <p className="mb-4 text-sm text-slate-500">
+            Columns: name, phone (required), email, company, tags, notes. Phone numbers are
+            validated automatically.
           </p>
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
             <Upload className="h-4 w-4" /> Choose file
             <input
               type="file"
@@ -75,12 +96,12 @@ export function ContactsPage() {
             />
           </label>
           {importResult && (
-            <div className="mt-3 text-sm">
-              <p className="text-green-600">Imported {importResult.imported} contact(s).</p>
+            <div className="mt-4 text-sm">
+              <p className="text-emerald-600">Imported {importResult.imported} contact(s).</p>
               {importResult.invalid.length > 0 && (
-                <div className="mt-1 text-red-500">
+                <div className="mt-2 rounded-lg bg-red-50 p-3 text-red-600">
                   {importResult.invalid.length} invalid row(s):
-                  <ul className="list-inside list-disc">
+                  <ul className="mt-1 list-inside list-disc">
                     {importResult.invalid.slice(0, 5).map((r) => (
                       <li key={r.row}>
                         Row {r.row}: {r.reason} {r.value ? `(${r.value})` : ''}
@@ -94,10 +115,14 @@ export function ContactsPage() {
         </Card>
 
         <Card>
-          <h2 className="mb-3 font-semibold text-slate-800">Add manually</h2>
-          <div className="grid grid-cols-2 gap-3">
+          <h2 className="mb-3 font-semibold text-slate-900">Add manually</h2>
+          <div className="grid grid-cols-2 gap-x-3">
             <Field label="Name">
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Jane Doe"
+              />
             </Field>
             <Field label="Phone">
               <Input
@@ -107,10 +132,18 @@ export function ContactsPage() {
               />
             </Field>
             <Field label="Email">
-              <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <Input
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="jane@company.com"
+              />
             </Field>
             <Field label="Company">
-              <Input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
+              <Input
+                value={form.company}
+                onChange={(e) => setForm({ ...form, company: e.target.value })}
+                placeholder="Acme Inc."
+              />
             </Field>
             <Field label="Tags (comma-separated)">
               <Input
@@ -131,57 +164,60 @@ export function ContactsPage() {
       </div>
 
       <Card>
-        <h2 className="mb-3 font-semibold text-slate-800">All Contacts ({data?.total ?? 0})</h2>
+        <h2 className="mb-4 font-semibold text-slate-900">All Contacts ({data?.total ?? 0})</h2>
         {isLoading ? (
           <Spinner />
         ) : !data || data.items.length === 0 ? (
-          <EmptyState title="No contacts yet" />
+          <EmptyState
+            icon={<ContactIcon className="h-6 w-6" />}
+            title="No contacts yet"
+            hint="Upload a CSV or add contacts manually — they become the audience for your outbound campaigns."
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-left text-slate-400">
-                <tr>
-                  <th className="py-2">Name</th>
-                  <th>Phone</th>
-                  <th>Company</th>
-                  <th>Status</th>
-                  <th></th>
+              <thead>
+                <tr className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="pb-3">Name</th>
+                  <th className="pb-3">Phone</th>
+                  <th className="pb-3">Company</th>
+                  <th className="pb-3">Status</th>
+                  <th className="pb-3" />
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {data.items.map((c) => (
-                  <tr key={c.id} className="border-t border-slate-100">
-                    <td className="py-2 font-medium text-slate-700">{c.name}</td>
-                    <td className="text-slate-500">{c.phone}</td>
+                  <tr key={c.id} className="transition-colors hover:bg-slate-50/70">
+                    <td className="py-3 font-medium text-slate-800">{c.name}</td>
+                    <td className="font-mono text-xs text-slate-500">{c.phone}</td>
                     <td className="text-slate-500">{c.company || '—'}</td>
                     <td>
-                      <span className="inline-flex items-center gap-1">
+                      <span className="inline-flex items-center gap-1.5">
                         <Badge>{c.validationStatus}</Badge>
-                        {c.optedOut && (
-                          <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
-                            opted out
-                          </span>
-                        )}
+                        {c.optedOut && <Badge>opted out</Badge>}
                       </span>
                     </td>
                     <td className="text-right">
-                      <span className="inline-flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1">
                         {!c.optedOut && (
-                          <button
-                            onClick={() => optOut.mutate(c.phone)}
-                            className="text-slate-400 hover:text-amber-600"
-                            title="Opt out of AI calls (adds to DNC)"
+                          <ConfirmButton
+                            onConfirm={() => optOut.mutate(c.phone)}
+                            title="Opt out of AI calls?"
+                            message={`${c.phone} will be added to the Do-Not-Call list and never dialed again.`}
+                            confirmLabel="Opt out"
+                            className="rounded-md p-1.5 text-slate-400 transition hover:bg-amber-50 hover:text-amber-600"
                           >
                             <PhoneOff className="h-4 w-4" />
-                          </button>
+                          </ConfirmButton>
                         )}
-                        <button
-                          onClick={() => remove.mutate(c.id)}
-                          className="text-slate-400 hover:text-red-500"
-                          title="Delete contact"
+                        <ConfirmButton
+                          onConfirm={() => remove.mutate(c.id)}
+                          title="Delete this contact?"
+                          message={`${c.name} (${c.phone}) will be removed permanently.`}
+                          className="rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
                         >
                           <Trash2 className="h-4 w-4" />
-                        </button>
+                        </ConfirmButton>
                       </span>
                     </td>
                   </tr>

@@ -11,7 +11,8 @@ import {
   YAxis,
 } from 'recharts';
 import { analyticsApi } from '../lib/api/endpoints';
-import { Card, EmptyState, Spinner } from '../components/ui';
+import { BarChart3 } from 'lucide-react';
+import { Card, EmptyState, PageHeader, Spinner } from '../components/ui';
 
 const OUTCOME_COLORS: Record<string, string> = {
   completed: '#22c55e',
@@ -28,11 +29,14 @@ export function AnalyticsPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-bold text-slate-800">Analytics &amp; Reports</h1>
-      <p className="mb-6 text-sm text-slate-500">Call performance across your AI employees</p>
+      <PageHeader title="Analytics & Reports" description="Call performance across your AI employees" />
 
       {!hasData ? (
-        <EmptyState title="No call data yet" hint="Simulate an inbound call or launch a campaign." />
+        <EmptyState
+          icon={<BarChart3 className="h-6 w-6" />}
+          title="No call data yet"
+          hint="Charts light up as soon as your AI employees start taking or making calls."
+        />
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Card>
@@ -65,18 +69,18 @@ export function AnalyticsPage() {
             <h2 className="mb-4 font-semibold text-slate-800">By Employee</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="text-left text-slate-400">
-                  <tr>
-                    <th className="py-2">Employee</th>
-                    <th>Calls</th>
-                    <th>Minutes</th>
-                    <th>Cost</th>
+                <thead>
+                  <tr className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    <th className="pb-3">Employee</th>
+                    <th className="pb-3">Calls</th>
+                    <th className="pb-3">Minutes</th>
+                    <th className="pb-3">Cost</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100">
                   {data.byEmployee.map((e) => (
-                    <tr key={e.aiEmployeeId} className="border-t border-slate-100">
-                      <td className="py-2 font-medium text-slate-700">{e.name}</td>
+                    <tr key={e.aiEmployeeId} className="transition-colors hover:bg-slate-50/70">
+                      <td className="py-3 font-medium text-slate-800">{e.name}</td>
                       <td>{e.calls}</td>
                       <td>{e.minutes}</td>
                       <td>${e.usd.toFixed(2)}</td>

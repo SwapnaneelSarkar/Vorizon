@@ -1,42 +1,47 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PhoneOff, Trash2 } from 'lucide-react';
+import { PhoneOff, ShieldCheck, Trash2 } from 'lucide-react';
 import { authApi, complianceApi, userApi } from '../lib/api/endpoints';
 import { apiErrorMessage } from '../lib/api/client';
 import { useAuthStore } from '../store/authStore';
-import { Badge, Button, Card, EmptyState, Field, Input, Select, Spinner, Textarea } from '../components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  ConfirmButton,
+  EmptyState,
+  Field,
+  Input,
+  PageHeader,
+  Select,
+  Spinner,
+  Textarea,
+  toast,
+} from '../components/ui';
 
 function ChangePassword() {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
-  const [msg, setMsg] = useState('');
-  const [error, setError] = useState('');
 
   const change = useMutation({
     mutationFn: () => authApi.changePassword(current, next),
     onSuccess: () => {
-      setMsg('Password updated.');
-      setError('');
+      toast.success('Password updated');
       setCurrent('');
       setNext('');
     },
-    onError: (e) => {
-      setError(apiErrorMessage(e));
-      setMsg('');
-    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   return (
     <Card>
-      <h2 className="mb-3 font-semibold text-slate-800">Change Password</h2>
+      <h2 className="mb-4 font-semibold text-slate-900">Change Password</h2>
       <Field label="Current password">
         <Input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} />
       </Field>
       <Field label="New password (min 8, letters + numbers)">
         <Input type="password" value={next} onChange={(e) => setNext(e.target.value)} />
       </Field>
-      {error && <p className="mb-2 text-sm text-red-500">{error}</p>}
-      {msg && <p className="mb-2 text-sm text-green-600">{msg}</p>}
       <Button onClick={() => change.mutate()} disabled={!current || !next || change.isPending}>
         {change.isPending ? 'Updating…' : 'Update password'}
       </Button>
@@ -52,7 +57,6 @@ function TeamManagement() {
 
   const [form, setForm] = useState({ name: '', email: '', role: 'member' });
   const [tempPassword, setTempPassword] = useState('');
-  const [error, setError] = useState('');
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['team'],
@@ -66,26 +70,32 @@ function TeamManagement() {
     onSuccess: (res) => {
       setTempPassword(res.tempPassword ?? '');
       setForm({ name: '', email: '', role: 'member' });
-      setError('');
+      toast.success('Team member added');
       invalidate();
     },
-    onError: (e) => setError(apiErrorMessage(e)),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const updateRole = useMutation({
     mutationFn: ({ id, role }: { id: string; role: string }) => userApi.updateRole(id, role),
-    onSuccess: invalidate,
-    onError: (e) => setError(apiErrorMessage(e)),
+    onSuccess: () => {
+      toast.success('Role updated');
+      invalidate();
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const remove = useMutation({
     mutationFn: (id: string) => userApi.remove(id),
-    onSuccess: invalidate,
-    onError: (e) => setError(apiErrorMessage(e)),
+    onSuccess: () => {
+      toast.success('Member removed');
+      invalidate();
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   if (!canManage) {
     return (
       <Card>
-        <h2 className="mb-2 font-semibold text-slate-800">Team</h2>
+        <h2 className="mb-3 font-semibold text-slate-900">Team</h2>
         <EmptyState title="Owners and admins can manage the team" />
       </Card>
     );
@@ -93,7 +103,7 @@ function TeamManagement() {
 
   return (
     <Card>
-      <h2 className="mb-3 font-semibold text-slate-800">Team Members</h2>
+      <h2 className="mb-4 font-semibold text-slate-900">Team Members</h2>
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
         <Input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <Input placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
@@ -106,9 +116,8 @@ function TeamManagement() {
           Add member
         </Button>
       </div>
-      {error && <p className="mb-2 text-sm text-red-500">{error}</p>}
       {tempPassword && (
-        <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+        <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
           Temporary password (share securely, shown once): <strong>{tempPassword}</strong>
         </p>
       )}
@@ -117,18 +126,18 @@ function TeamManagement() {
         <Spinner />
       ) : (
         <table className="w-full text-sm">
-          <thead className="text-left text-slate-400">
-            <tr>
-              <th className="py-2">Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th></th>
+          <thead>
+            <tr className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <th className="pb-3">Name</th>
+              <th className="pb-3">Email</th>
+              <th className="pb-3">Role</th>
+              <th className="pb-3" />
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100">
             {users?.map((u) => (
-              <tr key={u.id} className="border-t border-slate-100">
-                <td className="py-2 font-medium text-slate-700">
+              <tr key={u.id} className="transition-colors hover:bg-slate-50/70">
+                <td className="py-3 font-medium text-slate-800">
                   {u.name} {u.id === me?.id && <span className="text-xs text-slate-400">(you)</span>}
                 </td>
                 <td className="text-slate-500">{u.email}</td>
@@ -149,9 +158,15 @@ function TeamManagement() {
                 </td>
                 <td className="text-right">
                   {isOwner && u.id !== me?.id && (
-                    <button onClick={() => remove.mutate(u.id)} className="text-slate-400 hover:text-red-500">
+                    <ConfirmButton
+                      onConfirm={() => remove.mutate(u.id)}
+                      title="Remove this member?"
+                      message={`${u.name} will lose access to the workspace immediately.`}
+                      confirmLabel="Remove"
+                      className="rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                    >
                       <Trash2 className="h-4 w-4" />
-                    </button>
+                    </ConfirmButton>
                   )}
                 </td>
               </tr>
@@ -168,17 +183,16 @@ function CallingConsent() {
   const me = useAuthStore((s) => s.user);
   const canManage = me?.role === 'owner' || me?.role === 'admin';
   const [checked, setChecked] = useState(false);
-  const [error, setError] = useState('');
 
   const { data, isLoading } = useQuery({ queryKey: ['compliance'], queryFn: complianceApi.get });
 
   const accept = useMutation({
     mutationFn: complianceApi.acceptConsent,
     onSuccess: () => {
-      setError('');
+      toast.success('Consent recorded — AI calling is enabled');
       qc.invalidateQueries({ queryKey: ['compliance'] });
     },
-    onError: (e) => setError(apiErrorMessage(e)),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   if (isLoading || !data) return <Spinner />;
@@ -186,22 +200,25 @@ function CallingConsent() {
 
   return (
     <Card>
-      <h2 className="mb-3 font-semibold text-slate-800">AI Calling Consent</h2>
+      <h2 className="mb-4 font-semibold text-slate-900">AI Calling Consent</h2>
       {consent.accepted ? (
-        <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">
-          <p className="font-medium">Consent recorded — AI calling is enabled.</p>
-          <p className="mt-1 text-green-600">
-            Accepted {consent.acceptedAt ? new Date(consent.acceptedAt).toLocaleString() : ''}
-            {consent.ip ? ` from IP ${consent.ip}` : ''}
-          </p>
+        <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm">
+          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
+          <div>
+            <p className="font-semibold text-emerald-800">Consent recorded — AI calling is enabled.</p>
+            <p className="mt-0.5 text-emerald-600">
+              Accepted {consent.acceptedAt ? new Date(consent.acceptedAt).toLocaleString() : ''}
+              {consent.ip ? ` from IP ${consent.ip}` : ''}
+            </p>
+          </div>
         </div>
       ) : (
         <>
-          <p className="mb-3 text-sm text-slate-500">
+          <p className="mb-4 text-sm text-slate-500">
             AI calling is disabled until your organization explicitly consents. Campaigns cannot be
             launched before this is accepted.
           </p>
-          <label className="mb-3 flex items-start gap-2 text-sm text-slate-600">
+          <label className="mb-4 flex cursor-pointer items-start gap-2.5 rounded-lg border border-slate-200 p-3 text-sm text-slate-600 transition hover:bg-slate-50">
             <input
               type="checkbox"
               className="mt-0.5"
@@ -210,12 +227,11 @@ function CallingConsent() {
               disabled={!canManage}
             />
             <span>
-              I confirm this organization has obtained the required consent to place automated
-              (AI) calls to its contacts, and will comply with TCPA and applicable local telephony
+              I confirm this organization has obtained the required consent to place automated (AI)
+              calls to its contacts, and will comply with TCPA and applicable local telephony
               regulations, including honoring opt-out requests and Do-Not-Call lists.
             </span>
           </label>
-          {error && <p className="mb-2 text-sm text-red-500">{error}</p>}
           <Button onClick={() => accept.mutate()} disabled={!checked || !canManage || accept.isPending}>
             {accept.isPending ? 'Saving…' : 'Enable AI calling'}
           </Button>
@@ -236,8 +252,6 @@ function RecordingDisclosure() {
 
   const [enabled, setEnabled] = useState(false);
   const [message, setMessage] = useState('');
-  const [msg, setMsg] = useState('');
-  const [error, setError] = useState('');
 
   useEffect(() => {
     if (data) {
@@ -249,24 +263,20 @@ function RecordingDisclosure() {
   const save = useMutation({
     mutationFn: () => complianceApi.updateSettings({ enabled, message }),
     onSuccess: () => {
-      setMsg('Saved.');
-      setError('');
+      toast.success('Disclosure settings saved');
       qc.invalidateQueries({ queryKey: ['compliance'] });
     },
-    onError: (e) => {
-      setError(apiErrorMessage(e));
-      setMsg('');
-    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   return (
     <Card>
-      <h2 className="mb-3 font-semibold text-slate-800">Call Recording Disclosure</h2>
-      <p className="mb-3 text-sm text-slate-500">
-        Where legally required, the AI announces this disclosure at the start of every call.
-        Enable or disable it per your jurisdiction.
+      <h2 className="mb-4 font-semibold text-slate-900">Call Recording Disclosure</h2>
+      <p className="mb-4 text-sm text-slate-500">
+        Where legally required, the AI announces this disclosure at the start of every call. Enable
+        or disable it per your jurisdiction.
       </p>
-      <label className="mb-3 flex items-center gap-2 text-sm text-slate-600">
+      <label className="mb-4 flex cursor-pointer items-center gap-2 text-sm text-slate-600">
         <input
           type="checkbox"
           checked={enabled}
@@ -283,8 +293,6 @@ function RecordingDisclosure() {
           disabled={!canManage}
         />
       </Field>
-      {error && <p className="mb-2 text-sm text-red-500">{error}</p>}
-      {msg && <p className="mb-2 text-sm text-green-600">{msg}</p>}
       <Button onClick={() => save.mutate()} disabled={!canManage || save.isPending || message.length < 10}>
         {save.isPending ? 'Saving…' : 'Save disclosure settings'}
       </Button>
@@ -297,7 +305,6 @@ function DncManager() {
   const me = useAuthStore((s) => s.user);
   const canRemove = me?.role === 'owner' || me?.role === 'admin';
   const [phone, setPhone] = useState('');
-  const [error, setError] = useState('');
 
   const { data, isLoading } = useQuery({ queryKey: ['dnc'], queryFn: complianceApi.listDnc });
   const invalidate = () => {
@@ -310,65 +317,74 @@ function DncManager() {
     mutationFn: () => complianceApi.addDnc(phone),
     onSuccess: () => {
       setPhone('');
-      setError('');
+      toast.success('Number added to the Do-Not-Call list');
       invalidate();
     },
-    onError: (e) => setError(apiErrorMessage(e)),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const remove = useMutation({
     mutationFn: (id: string) => complianceApi.removeDnc(id),
-    onSuccess: invalidate,
-    onError: (e) => setError(apiErrorMessage(e)),
+    onSuccess: () => {
+      toast.success('Number removed from the Do-Not-Call list');
+      invalidate();
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   return (
     <Card>
-      <h2 className="mb-3 font-semibold text-slate-800">Do Not Call List</h2>
-      <p className="mb-3 text-sm text-slate-500">
+      <h2 className="mb-3 font-semibold text-slate-900">Do Not Call List</h2>
+      <p className="mb-4 text-sm text-slate-500">
         Numbers on this list are never dialed by AI campaigns. Opt-outs are added automatically.
       </p>
-      <div className="mb-3 flex gap-2">
+      <div className="mb-4 flex gap-2">
         <Input
           placeholder="+1 415 555 0100"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
+          className="max-w-xs"
         />
         <Button onClick={() => add.mutate()} disabled={!phone || add.isPending}>
           Add
         </Button>
       </div>
-      {error && <p className="mb-2 text-sm text-red-500">{error}</p>}
       {isLoading ? (
         <Spinner />
       ) : !data || data.items.length === 0 ? (
-        <EmptyState title="No numbers on the DNC list" />
+        <EmptyState
+          icon={<PhoneOff className="h-6 w-6" />}
+          title="No numbers on the DNC list"
+          hint="Add numbers manually, or they’ll appear here automatically when contacts opt out."
+        />
       ) : (
         <table className="w-full text-sm">
-          <thead className="text-left text-slate-400">
-            <tr>
-              <th className="py-2">Phone</th>
-              <th>Reason</th>
-              <th>Added</th>
-              <th></th>
+          <thead>
+            <tr className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <th className="pb-3">Phone</th>
+              <th className="pb-3">Reason</th>
+              <th className="pb-3">Added</th>
+              <th className="pb-3" />
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100">
             {data.items.map((e) => (
-              <tr key={e.id} className="border-t border-slate-100">
-                <td className="py-2 font-medium text-slate-700">{e.phone}</td>
+              <tr key={e.id} className="transition-colors hover:bg-slate-50/70">
+                <td className="py-3 font-mono text-xs font-medium text-slate-800">{e.phone}</td>
                 <td>
                   <Badge>{e.reason === 'opt_out' ? 'opted out' : 'manual'}</Badge>
                 </td>
                 <td className="text-slate-500">{new Date(e.createdAt).toLocaleDateString()}</td>
                 <td className="text-right">
                   {canRemove && (
-                    <button
-                      onClick={() => remove.mutate(e.id)}
-                      className="text-slate-400 hover:text-red-500"
-                      title="Remove from DNC"
+                    <ConfirmButton
+                      onConfirm={() => remove.mutate(e.id)}
+                      title="Remove from Do-Not-Call list?"
+                      message={`${e.phone} will become callable by AI campaigns again.`}
+                      confirmLabel="Remove"
+                      className="rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
                     >
                       <Trash2 className="h-4 w-4" />
-                    </button>
+                    </ConfirmButton>
                   )}
                 </td>
               </tr>
@@ -383,16 +399,16 @@ function DncManager() {
 export function SettingsPage() {
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-bold text-slate-800">Settings</h1>
-      <p className="mb-6 text-sm text-slate-500">
-        Account security, team management, and calling compliance
-      </p>
+      <PageHeader
+        title="Settings"
+        description="Account security, team management, and calling compliance"
+      />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <ChangePassword />
         <TeamManagement />
       </div>
-      <h2 className="mb-3 mt-8 flex items-center gap-2 text-lg font-bold text-slate-800">
-        <PhoneOff className="h-5 w-5 text-slate-500" /> Telephony Compliance
+      <h2 className="mb-4 mt-10 flex items-center gap-2 text-lg font-bold text-slate-900">
+        <PhoneOff className="h-5 w-5 text-slate-400" /> Telephony Compliance
       </h2>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <CallingConsent />

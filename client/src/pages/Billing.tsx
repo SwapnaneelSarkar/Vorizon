@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ReceiptText } from 'lucide-react';
 import { billingApi, paymentApi } from '../lib/api/endpoints';
 import { apiErrorMessage } from '../lib/api/client';
 import { useAuthStore } from '../store/authStore';
-import { Button, Card, Input, Spinner } from '../components/ui';
+import { Badge, Button, Card, Input, PageHeader, Spinner, toast } from '../components/ui';
 import { formatUsd } from '../lib/utils';
 
 /** Razorpay Checkout global, injected by their script. */
@@ -33,7 +34,6 @@ function PayCard() {
   const me = useAuthStore((s) => s.user);
   const canPay = me?.role === 'owner' || me?.role === 'admin';
   const [amount, setAmount] = useState('500');
-  const [status, setStatus] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const refresh = () => {
@@ -41,16 +41,15 @@ function PayCard() {
   };
 
   const pay = async () => {
-    setStatus(null);
     setBusy(true);
     try {
       const amountInr = Number(amount);
       if (!Number.isInteger(amountInr) || amountInr < 1) {
-        setStatus({ kind: 'err', text: 'Enter a whole rupee amount (min ₹1)' });
+        toast.error('Enter a whole rupee amount (min ₹1)');
         return;
       }
       if (!(await loadCheckoutScript()) || !window.Razorpay) {
-        setStatus({ kind: 'err', text: 'Could not load Razorpay Checkout — check your connection' });
+        toast.error('Could not load Razorpay Checkout — check your connection');
         return;
       }
       const order = await paymentApi.createOrder(amountInr);
@@ -73,8 +72,8 @@ function PayCard() {
               razorpayPaymentId: resp.razorpay_payment_id,
               razorpaySignature: resp.razorpay_signature,
             })
-            .then(() => setStatus({ kind: 'ok', text: 'Payment successful — billing is active.' }))
-            .catch((e) => setStatus({ kind: 'err', text: apiErrorMessage(e) }))
+            .then(() => toast.success('Payment successful — billing is active'))
+            .catch((e) => toast.error(apiErrorMessage(e)))
             .finally(refresh);
         },
         modal: {
@@ -88,11 +87,11 @@ function PayCard() {
         void paymentApi
           .reportFailed(order.orderId, resp.error?.description ?? 'Payment failed')
           .finally(refresh);
-        setStatus({ kind: 'err', text: resp.error?.description ?? 'Payment failed' });
+        toast.error(resp.error?.description ?? 'Payment failed');
       });
       rzp.open();
     } catch (e) {
-      setStatus({ kind: 'err', text: apiErrorMessage(e) });
+      toast.error(apiErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -100,8 +99,8 @@ function PayCard() {
 
   return (
     <Card>
-      <h2 className="mb-3 font-semibold text-slate-800">Make a Payment</h2>
-      <p className="mb-3 text-sm text-slate-500">
+      <h2 className="mb-3 font-semibold text-slate-900">Make a Payment</h2>
+      <p className="mb-4 text-sm text-slate-500">
         Pay securely via Razorpay to activate billing for your organization.
       </p>
       <div className="mb-3 flex gap-2">
@@ -120,11 +119,6 @@ function PayCard() {
           {busy ? 'Opening…' : 'Pay with Razorpay'}
         </Button>
       </div>
-      {status && (
-        <p className={`text-sm ${status.kind === 'ok' ? 'text-green-600' : 'text-red-500'}`}>
-          {status.text}
-        </p>
-      )}
       {!canPay && <p className="text-xs text-slate-400">Only owners and admins can make payments.</p>}
     </Card>
   );
@@ -134,43 +128,36 @@ function PaymentHistory() {
   const { data, isLoading } = useQuery({ queryKey: ['payments'], queryFn: paymentApi.list });
   return (
     <Card>
-      <h2 className="mb-4 font-semibold text-slate-800">Payment History</h2>
+      <h2 className="mb-4 font-semibold text-slate-900">Payment History</h2>
       {isLoading ? (
         <Spinner />
       ) : !data || data.length === 0 ? (
-        <p className="py-4 text-center text-sm text-slate-400">No payments yet.</p>
+        <div className="flex flex-col items-center py-8 text-center">
+          <ReceiptText className="mb-2 h-6 w-6 text-slate-300" />
+          <p className="text-sm text-slate-400">No payments yet.</p>
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="text-left text-slate-400">
-              <tr>
-                <th className="py-2">Date</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Reference</th>
+            <thead>
+              <tr className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <th className="pb-3">Date</th>
+                <th className="pb-3">Amount</th>
+                <th className="pb-3">Status</th>
+                <th className="pb-3">Reference</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100">
               {data.map((p) => (
-                <tr key={p.id} className="border-t border-slate-100">
-                  <td className="py-2">{new Date(p.createdAt).toLocaleString()}</td>
-                  <td className="font-medium text-slate-700">
-                    ₹{(p.amount / 100).toFixed(2)}
-                  </td>
+                <tr key={p.id} className="transition-colors hover:bg-slate-50/70">
+                  <td className="py-3 text-slate-700">{new Date(p.createdAt).toLocaleString()}</td>
+                  <td className="font-semibold text-slate-900">₹{(p.amount / 100).toFixed(2)}</td>
                   <td>
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        p.status === 'paid'
-                          ? 'bg-green-100 text-green-700'
-                          : p.status === 'failed'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      {p.status}
-                    </span>
+                    <Badge>{p.status}</Badge>
                   </td>
-                  <td className="text-slate-500">{p.razorpayPaymentId ?? p.razorpayOrderId}</td>
+                  <td className="font-mono text-xs text-slate-500">
+                    {p.razorpayPaymentId ?? p.razorpayOrderId}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -189,23 +176,25 @@ export function BillingPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-bold text-slate-800">Billing</h1>
-      <p className="mb-6 text-sm text-slate-500">
-        Usage-based billing at {formatUsd(usage.rateUsd)} per conversation minute
-      </p>
+      <PageHeader
+        title="Billing"
+        description={`Usage-based billing at ${formatUsd(usage.rateUsd)} per conversation minute`}
+      />
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <p className="text-sm text-slate-500">Total Minutes</p>
-          <p className="text-3xl font-bold text-slate-800">{usage.totalMinutes}</p>
+          <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900">{usage.totalMinutes}</p>
         </Card>
         <Card>
           <p className="text-sm text-slate-500">Total Cost</p>
-          <p className="text-3xl font-bold text-slate-800">{formatUsd(usage.totalUsd)}</p>
+          <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
+            {formatUsd(usage.totalUsd)}
+          </p>
         </Card>
         <Card>
           <p className="text-sm text-slate-500">Projected Monthly</p>
-          <p className="text-3xl font-bold text-slate-800">
+          <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
             {formatUsd(estimate?.projectedMonthlyUsd ?? 0)}
           </p>
         </Card>
@@ -217,27 +206,27 @@ export function BillingPage() {
       </div>
 
       <Card>
-        <h2 className="mb-4 font-semibold text-slate-800">Usage by Day</h2>
+        <h2 className="mb-4 font-semibold text-slate-900">Usage by Day</h2>
         {usage.byDay.length === 0 ? (
-          <p className="py-4 text-center text-sm text-slate-400">No usage recorded yet.</p>
+          <p className="py-6 text-center text-sm text-slate-400">No usage recorded yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-left text-slate-400">
-                <tr>
-                  <th className="py-2">Date</th>
-                  <th>Calls</th>
-                  <th>Minutes</th>
-                  <th>Cost</th>
+              <thead>
+                <tr className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="pb-3">Date</th>
+                  <th className="pb-3">Calls</th>
+                  <th className="pb-3">Minutes</th>
+                  <th className="pb-3">Cost</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {usage.byDay.map((d) => (
-                  <tr key={d.date} className="border-t border-slate-100">
-                    <td className="py-2">{d.date}</td>
-                    <td>{d.calls}</td>
-                    <td>{d.minutes}</td>
-                    <td>{formatUsd(d.usd)}</td>
+                  <tr key={d.date} className="transition-colors hover:bg-slate-50/70">
+                    <td className="py-3 text-slate-700">{d.date}</td>
+                    <td className="text-slate-700">{d.calls}</td>
+                    <td className="text-slate-700">{d.minutes}</td>
+                    <td className="font-medium text-slate-900">{formatUsd(d.usd)}</td>
                   </tr>
                 ))}
               </tbody>
