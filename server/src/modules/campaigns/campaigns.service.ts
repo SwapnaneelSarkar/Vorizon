@@ -4,6 +4,7 @@ import { Campaign, type CampaignDoc } from '../../models/Campaign.js';
 import { Contact } from '../../models/Contact.js';
 import { ApiError } from '../../utils/apiError.js';
 import { loadEmployee, refreshStatus } from '../aiEmployees/aiEmployees.service.js';
+import { hasCallingConsent } from '../compliance/compliance.service.js';
 import { campaignQueue } from './campaignQueue.js';
 
 type CampaignRecord = HydratedDocument<CampaignDoc>;
@@ -89,6 +90,13 @@ export async function launchCampaign(orgId: string, id: string): Promise<Campaig
     ]);
   }
 
+  // TCPA: AI calling requires explicit, recorded consent before any call is made.
+  if (!(await hasCallingConsent(orgId))) {
+    throw ApiError.precondition('Cannot launch campaign', [
+      'Accept the AI calling consent (Settings → Compliance)',
+    ]);
+  }
+
   // Assign unassigned valid contacts to this campaign.
   await Contact.updateMany(
     { organizationId: orgId, validationStatus: 'valid', campaignId: null },
@@ -113,7 +121,7 @@ export async function launchCampaign(orgId: string, id: string): Promise<Campaig
   } as CampaignRecord['stats'];
   await campaign.save();
 
-  campaignQueue.enqueue(orgId, id);
+  await campaignQueue.enqueue(orgId, id);
   return toDTO(campaign);
 }
 

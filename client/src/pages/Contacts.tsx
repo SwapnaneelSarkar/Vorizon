@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Trash2, Upload } from 'lucide-react';
+import { PhoneOff, Trash2, Upload } from 'lucide-react';
 import type { ContactImportResult } from '@vorizon/shared';
-import { contactApi } from '../lib/api/endpoints';
+import { complianceApi, contactApi } from '../lib/api/endpoints';
 import { apiErrorMessage } from '../lib/api/client';
 import { Badge, Button, Card, EmptyState, Field, Input, Spinner } from '../components/ui';
 
@@ -44,6 +44,15 @@ export function ContactsPage() {
   });
 
   const remove = useMutation({ mutationFn: (id: string) => contactApi.remove(id), onSuccess: invalidate });
+
+  const optOut = useMutation({
+    mutationFn: (phone: string) => complianceApi.optOut(phone),
+    onSuccess: () => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['dnc'] });
+    },
+    onError: (e) => setError(apiErrorMessage(e)),
+  });
 
   return (
     <div>
@@ -146,12 +155,34 @@ export function ContactsPage() {
                     <td className="text-slate-500">{c.phone}</td>
                     <td className="text-slate-500">{c.company || '—'}</td>
                     <td>
-                      <Badge>{c.validationStatus}</Badge>
+                      <span className="inline-flex items-center gap-1">
+                        <Badge>{c.validationStatus}</Badge>
+                        {c.optedOut && (
+                          <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
+                            opted out
+                          </span>
+                        )}
+                      </span>
                     </td>
                     <td className="text-right">
-                      <button onClick={() => remove.mutate(c.id)} className="text-slate-400 hover:text-red-500">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <span className="inline-flex items-center gap-2">
+                        {!c.optedOut && (
+                          <button
+                            onClick={() => optOut.mutate(c.phone)}
+                            className="text-slate-400 hover:text-amber-600"
+                            title="Opt out of AI calls (adds to DNC)"
+                          >
+                            <PhoneOff className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => remove.mutate(c.id)}
+                          className="text-slate-400 hover:text-red-500"
+                          title="Delete contact"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </span>
                     </td>
                   </tr>
                 ))}

@@ -12,6 +12,9 @@ const contactSchema = new Schema(
     notes: { type: String, default: '' },
     campaignId: { type: Schema.Types.ObjectId, ref: 'Campaign', default: null, index: true },
     validationStatus: { type: String, enum: VALIDATION_STATUSES, default: 'pending' },
+    // Set when the person opts out of AI calls; never dialed again (also on DNC).
+    optedOut: { type: Boolean, default: false },
+    optedOutAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

@@ -1,5 +1,12 @@
 import { Router } from 'express';
-import { changePasswordSchema, loginSchema, refreshSchema, registerSchema } from '@vorizon/shared';
+import {
+  changePasswordSchema,
+  forgotPasswordSchema,
+  loginSchema,
+  refreshSchema,
+  registerSchema,
+  resetPasswordSchema,
+} from '@vorizon/shared';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { validate } from '../../middleware/validate.js';
 import { requireAuth } from '../../middleware/auth.js';
@@ -19,6 +26,18 @@ const authLimiter = makeRateLimiter({
 authRoutes.post('/register', authLimiter, validate(registerSchema), asyncHandler(ctrl.registerHandler));
 authRoutes.post('/login', authLimiter, validate(loginSchema), asyncHandler(ctrl.loginHandler));
 authRoutes.post('/refresh', validate(refreshSchema), asyncHandler(ctrl.refreshHandler));
+authRoutes.post(
+  '/forgot-password',
+  authLimiter,
+  validate(forgotPasswordSchema),
+  asyncHandler(ctrl.forgotPasswordHandler),
+);
+authRoutes.post(
+  '/reset-password',
+  authLimiter,
+  validate(resetPasswordSchema),
+  asyncHandler(ctrl.resetPasswordHandler),
+);
 authRoutes.post('/logout', requireAuth, asyncHandler(ctrl.logoutHandler));
 authRoutes.get('/me', requireAuth, asyncHandler(ctrl.meHandler));
 authRoutes.post(

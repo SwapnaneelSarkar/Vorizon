@@ -18,7 +18,7 @@ const knowledgeItemSchema = new Schema(
     content: { type: String, default: '' },
     sourceFile: {
       type: {
-        path: String,
+        firestoreFileId: String, // raw upload stored in Firestore (when Firebase is on)
         mime: String,
         originalName: String,
         sizeBytes: Number,

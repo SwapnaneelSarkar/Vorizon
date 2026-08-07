@@ -15,5 +15,10 @@ server/uploads/*
 PLAN.md
 PLAN_DETAILED.md
 
-# redis snapshot
-*.rdb
+# firebase service-account key — never commit
+firebase-service-account.json
+*-firebase-adminsdk-*.json
+
+# firebase functions build artifacts + secrets
+functions/index.js
+functions/node_modules/

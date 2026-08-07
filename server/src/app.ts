@@ -20,7 +20,15 @@ export function createApp(): Express {
   if (env.NODE_ENV !== 'test') {
     app.use(pinoHttp({ logger }));
   }
-  app.use(express.json({ limit: '2mb' }));
+  // Keep the raw body around for webhook signature verification (Razorpay, Retell).
+  app.use(
+    express.json({
+      limit: '2mb',
+      verify: (req, _res, buf) => {
+        (req as express.Request).rawBody = buf;
+      },
+    }),
+  );
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
 

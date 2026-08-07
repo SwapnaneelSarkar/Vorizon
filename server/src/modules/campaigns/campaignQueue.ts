@@ -1,18 +1,24 @@
-import { isRedisEnabled } from '../../config/redis.js';
+import { isFirebaseEnabled } from '../../config/firebase.js';
 import { logger } from '../../utils/logger.js';
 import { runCampaign } from './campaignRunner.js';
-import { BullCampaignQueue } from './bullQueue.js';
+import { FirestoreCampaignQueue } from './firestoreQueue.js';
 
 /**
  * Swappable queue boundary for campaign execution.
- * - REDIS_URL unset → in-process, non-blocking (fire-and-forget). Fine for a
+ * - Firebase unset → in-process, non-blocking (fire-and-forget). Fine for a
  *   single instance; jobs are lost on restart.
- * - REDIS_URL set → durable BullMQ/Redis queue (see bullQueue.ts), processed by
- *   workers (see campaignWorker.ts). Survives restarts and scales horizontally.
- * The rest of the app calls campaignQueue.enqueue() and is unaware of which.
+ * - Firebase set → durable Firestore queue (see firestoreQueue.ts), processed
+ *   by workers (see campaignWorker.ts). Survives restarts and scales
+ *   horizontally. The rest of the app calls campaignQueue.enqueue() and is
+ *   unaware of which.
  */
 export interface CampaignQueue {
-  enqueue(orgId: string, campaignId: string): void;
+  /**
+   * Persist/start the job. MUST be awaited by callers: on serverless runtimes
+   * the instance freezes once the response is sent, so a fire-and-forget
+   * enqueue would silently never commit.
+   */
+  enqueue(orgId: string, campaignId: string): Promise<void>;
   /** Test/CI helper: resolve when in-flight in-process jobs settle. */
   drain(): Promise<void>;
 }
@@ -20,7 +26,8 @@ export interface CampaignQueue {
 class InProcessCampaignQueue implements CampaignQueue {
   private inFlight = new Set<Promise<void>>();
 
-  enqueue(orgId: string, campaignId: string): void {
+  async enqueue(orgId: string, campaignId: string): Promise<void> {
+    // Intentionally does not await the run itself — only its scheduling.
     const job = runCampaign(orgId, campaignId)
       .catch((err) => logger.error({ err, campaignId }, 'Campaign run failed'))
       .finally(() => this.inFlight.delete(job));
@@ -33,9 +40,9 @@ class InProcessCampaignQueue implements CampaignQueue {
 }
 
 function createQueue(): CampaignQueue {
-  // BullCampaignQueue only opens a Redis connection in its constructor, so it is
-  // instantiated exclusively when Redis is enabled.
-  return isRedisEnabled ? new BullCampaignQueue() : new InProcessCampaignQueue();
+  // FirestoreCampaignQueue only touches Firestore in its constructor, so it is
+  // instantiated exclusively when Firebase is configured.
+  return isFirebaseEnabled ? new FirestoreCampaignQueue() : new InProcessCampaignQueue();
 }
 
 export const campaignQueue: CampaignQueue = createQueue();

@@ -3,9 +3,11 @@ import type {
   CallDirection,
   CallOutcome,
   CampaignStatus,
+  DncReason,
   EmployeeStatus,
   EmployeeType,
   KnowledgeKind,
+  PaymentStatus,
   ResponsibilityKind,
   Role,
   ValidationStatus,
@@ -88,6 +90,7 @@ export interface ContactDTO {
   notes?: string;
   campaignId?: string;
   validationStatus: ValidationStatus;
+  optedOut?: boolean;
   createdAt: string;
 }
 
@@ -136,6 +139,46 @@ export interface UsageSummary {
 export interface InterviewReply {
   sessionId: string;
   reply: string;
+}
+
+export interface ComplianceSettingsDTO {
+  callingConsent: {
+    accepted: boolean;
+    acceptedAt?: string;
+    acceptedByUserId?: string;
+    ip?: string;
+  };
+  recordingDisclosure: { enabled: boolean; message: string };
+  dncCount: number;
+}
+
+export interface DncEntryDTO {
+  id: string;
+  phone: string;
+  reason: DncReason;
+  note?: string;
+  createdAt: string;
+}
+
+export interface PaymentDTO {
+  id: string;
+  razorpayOrderId: string;
+  razorpayPaymentId?: string;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  purpose: string;
+  failureReason?: string;
+  createdAt: string;
+  paidAt?: string;
+}
+
+/** Everything Razorpay Checkout needs on the client; the key secret never leaves the server. */
+export interface PaymentOrderDTO {
+  orderId: string;
+  amount: number;
+  currency: string;
+  keyId: string;
 }
 
 export interface ApiError {

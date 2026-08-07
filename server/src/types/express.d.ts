@@ -8,6 +8,8 @@ declare global {
         organizationId: string;
         role: Role;
       };
+      /** Raw request body captured for webhook signature verification. */
+      rawBody?: Buffer;
     }
   }
 }

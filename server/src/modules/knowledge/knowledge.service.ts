@@ -1,6 +1,7 @@
 import type { CreateKnowledgeInput, KnowledgeItemDTO, KnowledgeKind } from '@vorizon/shared';
 import { KnowledgeItem, type KnowledgeItemDoc } from '../../models/KnowledgeItem.js';
 import { loadEmployee, refreshStatus } from '../aiEmployees/aiEmployees.service.js';
+import { deleteFile, saveFile } from '../files/fileStore.js';
 import { chunkText, extractText } from './parsers.js';
 
 type KnowledgeRecord = KnowledgeItemDoc & { _id: unknown };
@@ -52,12 +53,20 @@ export async function addFileKnowledge(
 ): Promise<KnowledgeItemDTO> {
   const employee = await loadEmployee(orgId, employeeId);
   const parsedText = await extractText(file.buffer, file.mimetype, file.originalname);
+  // Keep the original upload in Firestore (no-op returning null when Firebase is off).
+  const firestoreFileId = await saveFile(file.buffer, {
+    organizationId: orgId,
+    originalName: file.originalname,
+    mime: file.mimetype,
+    sizeBytes: file.size,
+  });
   const item = (await KnowledgeItem.create({
     organizationId: orgId,
     aiEmployeeId: employee._id,
     kind: 'file' as KnowledgeKind,
     title: title || file.originalname,
     sourceFile: {
+      firestoreFileId: firestoreFileId ?? undefined,
       mime: file.mimetype,
       originalName: file.originalname,
       sizeBytes: file.size,
@@ -84,6 +93,10 @@ export async function deleteKnowledge(
   knowledgeId: string,
 ): Promise<void> {
   const employee = await loadEmployee(orgId, employeeId);
-  await KnowledgeItem.deleteOne({ _id: knowledgeId, aiEmployeeId: employeeId });
+  const item = await KnowledgeItem.findOne({ _id: knowledgeId, aiEmployeeId: employeeId });
+  if (item) {
+    await deleteFile(item.sourceFile?.firestoreFileId);
+    await item.deleteOne();
+  }
   await refreshStatus(employee);
 }

@@ -4,4 +4,6 @@ export * from './schemas/auth.js';
 export * from './schemas/employee.js';
 export * from './schemas/contact.js';
 export * from './schemas/campaign.js';
+export * from './schemas/compliance.js';
+export * from './schemas/payment.js';
 export * from './types/dto.js';

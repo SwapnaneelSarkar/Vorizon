@@ -122,6 +122,9 @@ describe('async campaign runner', () => {
     ).expect(201);
     const cid = camp.body.data.id;
 
+    // AI calling requires recorded consent before launch (TCPA gate).
+    await auth(request(app).post('/api/compliance/consent').send({ accepted: true })).expect(200);
+
     const launched = await auth(request(app).post(`/api/campaigns/${cid}/launch`)).expect(200);
     expect(launched.body.data.status).toBe('running'); // returns immediately
 

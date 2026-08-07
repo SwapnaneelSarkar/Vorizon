@@ -14,6 +14,10 @@ export async function handleCallEnded(event: CallEvent) {
   const durationSec = event.durationSec ?? 0;
   const outcome = event.outcome ?? 'completed';
 
+  // Idempotent: providers may deliver the same call-ended webhook more than once.
+  const existing = await Call.findOne({ externalCallId: event.externalCallId });
+  if (existing) return existing;
+
   const call = await Call.create({
     organizationId: event.organizationId,
     aiEmployeeId: event.aiEmployeeId,
@@ -28,7 +32,7 @@ export async function handleCallEnded(event: CallEvent) {
     outcome,
     escalated: event.escalated ?? false,
     transcript: event.transcript ?? [],
-    provider: event.externalCallId.startsWith('vapi') ? 'vapi' : 'mock',
+    provider: event.provider ?? (event.externalCallId.startsWith('vapi') ? 'vapi' : 'mock'),
     externalCallId: event.externalCallId,
   });
 

@@ -48,6 +48,12 @@ export type ValidationStatus = (typeof VALIDATION_STATUSES)[number];
 export const BILLING_STATUSES = ['inactive', 'active', 'past_due'] as const;
 export type BillingStatus = (typeof BILLING_STATUSES)[number];
 
+export const DNC_REASONS = ['manual', 'opt_out'] as const;
+export type DncReason = (typeof DNC_REASONS)[number];
+
+export const PAYMENT_STATUSES = ['created', 'paid', 'failed'] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
 /** Preset responsibilities from the requirement doc. */
 export const RESPONSIBILITY_PRESETS = [
   'Answer customer questions',

@@ -15,6 +15,29 @@ const organizationSchema = new Schema(
       },
       default: undefined,
     },
+    // TCPA-style consent: AI calling stays disabled until explicitly accepted.
+    callingConsent: {
+      type: {
+        accepted: { type: Boolean, default: false },
+        acceptedAt: Date,
+        acceptedByUserId: { type: Schema.Types.ObjectId, ref: 'User' },
+        ip: String,
+      },
+      default: undefined,
+    },
+    // Jurisdiction-dependent settings, configurable per organization.
+    compliance: {
+      type: {
+        recordingDisclosure: {
+          enabled: { type: Boolean, default: false },
+          message: {
+            type: String,
+            default: 'This call may be recorded for quality and training purposes.',
+          },
+        },
+      },
+      default: undefined,
+    },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true },

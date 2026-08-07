@@ -9,6 +9,9 @@ const userSchema = new Schema(
     organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
     role: { type: String, enum: ROLES, default: 'member' },
     refreshTokenHash: { type: String, default: null },
+    // Password-reset OTP (hashed) sent via email; single-use with expiry.
+    resetOtpHash: { type: String, default: null },
+    resetOtpExpiresAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

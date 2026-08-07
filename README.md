@@ -4,10 +4,12 @@ Build, train, test & deploy AI employees that handle phone calls — **Inbound**
 line) and **Outbound** (dial your contact list). Guided setup wizard, usage-based billing at
 **$0.10 / conversation minute**. MERN + TypeScript monorepo.
 
-> Phase 1: the full product with the live voice-calling engine abstracted behind a `VoiceEngine`
-> interface and **mocked**. Real telephony (Vapi/Retell) is a Phase-2 adapter that plugs into the same
-> interface with no changes outside `server/src/voice/`. The interview/testing chat uses **real Claude**
-> when `ANTHROPIC_API_KEY` is set (offline echo-mode otherwise).
+> The voice-calling engine is abstracted behind a `VoiceEngine` interface: **mock** (simulated
+> telephony, default) or **Retell AI** (`VOICE_PROVIDER=retell`) for real outbound calls. The
+> interview/testing chat uses **real Claude** when `ANTHROPIC_API_KEY` is set (offline echo-mode
+> otherwise). Integrations — telephony compliance (TCPA consent, DNC, opt-out, recording
+> disclosure), Resend transactional email, Razorpay payments, Retell voice — are documented in
+> [INTEGRATIONS.md](./INTEGRATIONS.md).
 
 ## Stack
 - **client** — React + Vite + TypeScript + Tailwind + React Query + Zustand + Recharts
@@ -85,22 +87,23 @@ campaign launch, and dashboard aggregation.
 - **AuthZ:** org-scoped RBAC (owner/admin/member), team management (`/organizations/users`), change-password, password policy
 - **Audit log:** sensitive actions (activate, launch, user changes) recorded to `AuditLog`
 - **Scalable campaigns:** launch is non-blocking — execution runs on a swappable queue (`campaignQueue`)
-- **Redis (optional, set `REDIS_URL`):** Redis-backed rate limiting (shared across instances) + a
-  **durable BullMQ campaign queue** with workers. No `REDIS_URL` → in-memory/in-process fallbacks.
+- **Firebase (optional, set `FIREBASE_PROJECT_ID` / `FIREBASE_SERVICE_ACCOUNT`):** Firestore-backed
+  rate limiting (shared across instances), a **durable Firestore campaign queue** with workers, and
+  raw upload storage in Firestore. Not configured → in-memory/in-process fallbacks.
 - **Client:** route-level code-splitting + error boundary
 - **Ops:** `Dockerfile` (server) + `client/Dockerfile` (nginx) + GitHub Actions CI (typecheck → test → build)
 
-### Redis + workers
+### Firebase + workers
 ```bash
-# Set REDIS_URL in .env (Redis Cloud / Upstash / self-hosted), then:
+# Set FIREBASE_PROJECT_ID + FIREBASE_SERVICE_ACCOUNT (inline JSON or key-file path) in .env, then:
 npm run dev                     # API runs the campaign worker in-process (WORKER_IN_PROCESS=true)
 
 # For horizontal scale: set WORKER_IN_PROCESS=false on the API and run dedicated workers:
 npm run worker --workspace @vorizon/server        # (built)  node dist/worker.js
 npm run worker:dev --workspace @vorizon/server    # (dev)    tsx watch src/worker.ts
 ```
-Note: BullMQ works best on a persistent Redis (Redis Cloud / self-hosted). On Upstash's free tier its
-per-day command limit can be exhausted by the worker's polling — prefer Redis for rate-limiting there.
+Note: the campaign worker polls Firestore every 5s and claims jobs with a lease (visibility
+timeout), so jobs survive restarts and multiple workers never double-process a campaign.
 
 ## Docker
 ```bash
@@ -108,7 +111,16 @@ docker build -t vorizon-server .
 docker build -f client/Dockerfile -t vorizon-client .
 ```
 
-## Phase 2 (needs third-party integration — intentionally deferred)
-Real voice via `VapiVoiceEngine` (`VOICE_PROVIDER=vapi`), Stripe charging, S3 uploads, Redis-backed
-queue/rate-limit, embedding-based RAG, CRM import, Google OAuth, email (verification/reset), and
-telephony compliance (DNC/TCPA/consent).
+## Integrations (see [INTEGRATIONS.md](./INTEGRATIONS.md))
+- **Telephony compliance** — org-level AI-calling consent (timestamp + IP), Do-Not-Call list,
+  per-contact opt-out (manual + in-call), configurable recording disclosure; enforced at campaign
+  launch and re-checked before every dial.
+- **Resend email** — welcome, OTP, password-reset (forgot/reset endpoints), and notification
+  emails; safe no-op when unconfigured.
+- **Razorpay payments** — order API, server-side signature verification, signed webhook,
+  success/failure flows, payment history; secrets never reach the client.
+- **Retell AI voice** — real outbound campaign calls with signed webhooks feeding the shared
+  metering pipeline (`VOICE_PROVIDER=retell`).
+
+## Phase 3 (intentionally deferred)
+Embedding-based RAG, CRM import, Google OAuth, and inbound Retell call routing.

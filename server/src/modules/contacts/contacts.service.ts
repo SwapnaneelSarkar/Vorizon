@@ -22,6 +22,7 @@ function toDTO(c: ContactRecord): ContactDTO {
     notes: c.notes || undefined,
     campaignId: c.campaignId ? String(c.campaignId) : undefined,
     validationStatus: c.validationStatus,
+    optedOut: c.optedOut ?? false,
     createdAt: (c as unknown as { createdAt: Date }).createdAt.toISOString(),
   };
 }

@@ -30,3 +30,14 @@ export async function changePasswordHandler(req: Request, res: Response) {
   await authService.changePassword(req.user!.userId, req.body.currentPassword, req.body.newPassword);
   res.status(204).send();
 }
+
+export async function forgotPasswordHandler(req: Request, res: Response) {
+  await authService.forgotPassword(req.body.email);
+  // Always 204 — never reveal whether the email exists.
+  res.status(204).send();
+}
+
+export async function resetPasswordHandler(req: Request, res: Response) {
+  await authService.resetPassword(req.body.email, req.body.otp, req.body.newPassword);
+  res.status(204).send();
+}

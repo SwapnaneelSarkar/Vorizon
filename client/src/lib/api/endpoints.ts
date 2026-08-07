@@ -2,14 +2,18 @@ import type {
   AIEmployeeDTO,
   AuthResponse,
   CampaignDTO,
+  ComplianceSettingsDTO,
   ContactDTO,
   ContactImportResult,
   CreateCampaignInput,
   CreateContactInput,
   CreateEmployeeInput,
+  DncEntryDTO,
   InterviewReply,
   KnowledgeItemDTO,
   LoginInput,
+  PaymentDTO,
+  PaymentOrderDTO,
   RegisterInput,
   ResponsibilityDTO,
   SetResponsibilitiesInput,
@@ -29,6 +33,9 @@ export const authApi = {
   logout: () => api.post('/auth/logout'),
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post('/auth/change-password', { currentPassword, newPassword }),
+  forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (email: string, otp: string, newPassword: string) =>
+    api.post('/auth/reset-password', { email, otp, newPassword }),
 };
 
 // ---- team / users ----
@@ -156,4 +163,28 @@ export const analyticsApi = {
 export const billingApi = {
   usage: () => unwrap<UsageSummary>(api.get('/billing/usage')),
   estimate: () => unwrap<{ projectedMonthlyUsd: number }>(api.get('/billing/estimate')),
+};
+
+// ---- compliance ----
+export const complianceApi = {
+  get: () => unwrap<ComplianceSettingsDTO>(api.get('/compliance')),
+  acceptConsent: () => unwrap<ComplianceSettingsDTO>(api.post('/compliance/consent', { accepted: true })),
+  updateSettings: (recordingDisclosure: { enabled: boolean; message: string }) =>
+    unwrap<ComplianceSettingsDTO>(api.patch('/compliance/settings', { recordingDisclosure })),
+  listDnc: () => unwrap<{ items: DncEntryDTO[]; total: number }>(api.get('/compliance/dnc')),
+  addDnc: (phone: string, note?: string) =>
+    unwrap<DncEntryDTO>(api.post('/compliance/dnc', { phone, note })),
+  removeDnc: (id: string) => api.delete(`/compliance/dnc/${id}`),
+  optOut: (phone: string) => unwrap<DncEntryDTO>(api.post('/compliance/opt-out', { phone })),
+};
+
+// ---- payments (Razorpay) ----
+export const paymentApi = {
+  createOrder: (amountInr: number) =>
+    unwrap<PaymentOrderDTO>(api.post('/payments/order', { amountInr, purpose: 'billing_activation' })),
+  verify: (input: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) =>
+    unwrap<PaymentDTO>(api.post('/payments/verify', input)),
+  reportFailed: (razorpayOrderId: string, reason?: string) =>
+    unwrap<PaymentDTO>(api.post('/payments/failed', { razorpayOrderId, reason })),
+  list: () => unwrap<PaymentDTO[]>(api.get('/payments')),
 };

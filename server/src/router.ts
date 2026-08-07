@@ -7,6 +7,9 @@ import { campaignRoutes } from './modules/campaigns/campaigns.routes.js';
 import { billingRoutes } from './modules/billing/billing.routes.js';
 import { analyticsRoutes } from './modules/analytics/analytics.routes.js';
 import { organizationRoutes } from './modules/organizations/organizations.routes.js';
+import { complianceRoutes } from './modules/compliance/compliance.routes.js';
+import { paymentRoutes } from './modules/payments/payments.routes.js';
+import { retellWebhookRoutes } from './voice/retellWebhook.js';
 import { devRoutes } from './modules/dev/dev.routes.js';
 import { env } from './config/env.js';
 
@@ -31,6 +34,10 @@ apiRouter.use('/contacts', contactRoutes);
 apiRouter.use('/campaigns', campaignRoutes);
 apiRouter.use('/billing', billingRoutes);
 apiRouter.use('/analytics', analyticsRoutes);
+apiRouter.use('/compliance', complianceRoutes);
+apiRouter.use('/payments', paymentRoutes);
+// Voice-provider webhooks (signature-authenticated, no JWT).
+apiRouter.use('/voice', retellWebhookRoutes);
 
 // Dev-only helpers (mock inbound call simulation) — disabled in production.
 if (env.NODE_ENV !== 'production') {
