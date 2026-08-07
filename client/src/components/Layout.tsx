@@ -16,6 +16,7 @@ import { authApi } from '../lib/api/endpoints';
 import { useAuthStore } from '../store/authStore';
 import { cn } from '../lib/utils';
 import { Toaster } from './ui';
+import logoIcon from '../assets/logo-icon.png';
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -54,9 +55,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col bg-slate-900">
       <div className="flex items-center gap-2.5 px-6 py-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-blue to-brand-purple text-sm font-bold text-white shadow-md">
-          V
-        </div>
+        <img src={logoIcon} alt="Vorizon" className="h-10 w-auto shrink-0" />
         <div>
           <span className="block text-base font-bold leading-tight text-white">Vorizon</span>
           <span className="block text-[11px] font-medium text-slate-400">AI Employee Platform</span>
@@ -155,9 +154,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-brand-blue to-brand-purple text-xs font-bold text-white">
-              V
-            </div>
+            <img src={logoIcon} alt="Vorizon" className="h-7 w-auto" />
             <span className="font-bold text-slate-800">Vorizon</span>
           </div>
         </header>

@@ -1,5 +1,7 @@
 import { BarChart3, PhoneCall, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
+import logoIcon from '../assets/logo-icon.png';
+import logoFull from '../assets/logo-full.png';
 
 const features = [
   {
@@ -27,10 +29,8 @@ export function AuthShell({ children }: { children: ReactNode }) {
         <div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-brand-purple/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-40 -left-24 h-96 w-96 rounded-full bg-brand-blue/20 blur-3xl" />
 
-        <div className="relative flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-blue to-brand-purple text-base font-bold text-white shadow-lg">
-            V
-          </div>
+        <div className="relative flex items-center gap-3">
+          <img src={logoIcon} alt="Vorizon" className="h-12 w-auto" />
           <span className="text-xl font-bold text-white">Vorizon</span>
         </div>
 
@@ -63,7 +63,14 @@ export function AuthShell({ children }: { children: ReactNode }) {
       </div>
 
       <div className="flex w-full items-center justify-center bg-slate-50 p-6 lg:w-1/2">
-        <div className="w-full max-w-md">{children}</div>
+        <div className="w-full max-w-md">
+          <img
+            src={logoFull}
+            alt="Vorizon — Hire AI employees. Grow without limits."
+            className="mx-auto mb-8 w-full max-w-xs"
+          />
+          {children}
+        </div>
       </div>
     </div>
   );
