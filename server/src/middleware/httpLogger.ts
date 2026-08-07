@@ -38,10 +38,18 @@ export function buildHttpLogger(base: pino.Logger = logger): HttpLogger {
       return user ? { userId: user.userId, organizationId: user.organizationId } : {};
     },
     serializers: {
-      req: (req: { id?: string; method?: string; url?: string; remoteAddress?: string }) => ({
+      req: (req: {
+        id?: string;
+        method?: string;
+        url?: string;
+        remoteAddress?: string;
+        raw?: { ip?: string };
+      }) => ({
         id: req.id,
         method: req.method,
         url: req.url,
+        // Real client address (via trust proxy); remoteAddress is the LB/socket peer.
+        ip: req.raw?.ip ?? req.remoteAddress,
         remoteAddress: req.remoteAddress,
       }),
       res: (res: { statusCode?: number }) => ({ statusCode: res.statusCode }),

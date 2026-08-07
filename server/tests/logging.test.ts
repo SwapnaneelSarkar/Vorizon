@@ -45,7 +45,7 @@ describe('backend logging', () => {
     expect(raw).not.toContain('session=secret');
     // Lean serializer: only method/url/remoteAddress — no headers object at all.
     expect(Object.keys(line.req as object).sort()).toEqual(
-      ['id', 'method', 'remoteAddress', 'url'].sort(),
+      ['id', 'ip', 'method', 'remoteAddress', 'url'].sort(),
     );
     expect((line.res as { statusCode: number }).statusCode).toBe(200);
   });
