@@ -13,6 +13,12 @@ export function createApp(): Express {
   const app = express();
 
   app.disable('x-powered-by');
+  // One trusted proxy hop (Google's front end on Cloud Functions/Run): req.ip
+  // becomes the real client address — required for per-user rate limiting and
+  // truthful consent IP records. The last X-Forwarded-For entry is set by
+  // Google and not client-spoofable; without this, every user shares the load
+  // balancer's IP for rate limiting.
+  app.set('trust proxy', 1);
   app.use(helmet());
   app.use(compression());
   // Expose X-Request-Id so the browser client can read the correlation id.
