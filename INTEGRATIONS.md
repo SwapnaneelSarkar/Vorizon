@@ -150,6 +150,46 @@ Setup order: create the agent (give it a prompt that greets with
 
 ---
 
+## 5. Exotel (outbound voice — alternative to Retell)
+
+Server: `server/src/voice/exotelClient.ts`, `ExotelVoiceEngine.ts`, `exotelWebhook.ts`
+
+```env
+VOICE_PROVIDER=exotel
+EXOTEL_API_KEY=...           # API Credentials page
+EXOTEL_API_TOKEN=...
+EXOTEL_SID=crowdbuzz1        # Account SID
+EXOTEL_SUBDOMAIN=api.exotel.com   # or api.in.exotel.com (India cluster)
+EXOTEL_CALLER_ID=+91...      # an ExoPhone you own (E.164)
+EXOTEL_FLOW_URL=http://my.exotel.com/<sid>/exoml/start_voice/<APP_ID>
+EXOTEL_WEBHOOK_TOKEN=...     # shared secret appended to the callback URL
+```
+
+How it works: `ExotelVoiceEngine.startOutboundCall` calls Exotel's Connect API
+(`/v1/Accounts/<sid>/Calls/connect.json`) to dial the customer and connect them
+to a **Call Flow** that runs the Exotel **Voicebot** applet. Call outcomes hit
+`/api/voice/exotel/webhook` (authenticated by `?token=` — Exotel does not sign
+webhooks) and feed the same metering + compliance pipeline as every other
+provider, idempotent on redelivery.
+
+**Key limitation — the AI lives in Exotel, not Vorizon.** Exotel's Voicebot has
+no REST API, so its voice/prompt/knowledge are configured in the Exotel
+dashboard; the Vorizon wizard's Knowledge/Responsibilities do **not** sync into
+it. Vorizon triggers and tracks calls; Exotel owns the conversation.
+
+**Provisioning checklist (all on the Exotel side — required before any real call):**
+1. Buy/activate an **ExoPhone** number → set `EXOTEL_CALLER_ID`.
+2. Get a paid **Voicebot** plan with minutes (trial shows 0/0 min).
+3. Build the bot in Exotel **Voicebot → Build Bot** (voice + knowledge).
+4. Create a **Call Flow** (App Bazaar) with the Voicebot applet → set its URL as `EXOTEL_FLOW_URL`.
+5. Flip `VOICE_PROVIDER=exotel` and redeploy.
+
+Verified so far: credentials + Connect API auth/shape are accepted live (the API
+returns `400 "Could not find the CallerId"`, not `401`) — confirming the only
+gap is the provisioning above.
+
+---
+
 ## Security notes
 
 - All keys live in `server/.env` (gitignored; `firebase-service-account.json` likewise).
