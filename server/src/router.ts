@@ -10,6 +10,7 @@ import { organizationRoutes } from './modules/organizations/organizations.routes
 import { complianceRoutes } from './modules/compliance/compliance.routes.js';
 import { paymentRoutes } from './modules/payments/payments.routes.js';
 import { retellWebhookRoutes } from './voice/retellWebhook.js';
+import { exotelWebhookRoutes } from './voice/exotelWebhook.js';
 import { devRoutes } from './modules/dev/dev.routes.js';
 import { env } from './config/env.js';
 
@@ -36,8 +37,9 @@ apiRouter.use('/billing', billingRoutes);
 apiRouter.use('/analytics', analyticsRoutes);
 apiRouter.use('/compliance', complianceRoutes);
 apiRouter.use('/payments', paymentRoutes);
-// Voice-provider webhooks (signature-authenticated, no JWT).
+// Voice-provider webhooks (authenticated by signature/token, no JWT).
 apiRouter.use('/voice', retellWebhookRoutes);
+apiRouter.use('/voice', exotelWebhookRoutes);
 
 // Dev-only helpers (mock inbound call simulation) — disabled in production.
 if (env.NODE_ENV !== 'production') {

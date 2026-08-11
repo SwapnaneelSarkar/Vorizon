@@ -1,4 +1,5 @@
 import { env } from '../config/env.js';
+import { ExotelVoiceEngine } from './ExotelVoiceEngine.js';
 import { MockVoiceEngine } from './MockVoiceEngine.js';
 import { RetellVoiceEngine } from './RetellVoiceEngine.js';
 import type { VoiceEngine } from './VoiceEngine.js';
@@ -12,8 +13,11 @@ export function getVoiceEngine(): VoiceEngine {
     case 'retell':
       engine = new RetellVoiceEngine();
       return engine;
+    case 'exotel':
+      engine = new ExotelVoiceEngine();
+      return engine;
     case 'vapi':
-      throw new Error('Vapi voice engine not implemented (use retell or mock)');
+      throw new Error('Vapi voice engine not implemented (use retell, exotel or mock)');
     case 'mock':
     default:
       engine = new MockVoiceEngine();

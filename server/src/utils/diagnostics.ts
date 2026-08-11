@@ -23,6 +23,8 @@ export function logBootDiagnostics(entrypoint: string): void {
       voiceProvider: env.VOICE_PROVIDER,
       retellConfigured: Boolean(env.RETELL_API_KEY && env.RETELL_AGENT_ID),
       retellOutboundNumber: Boolean(env.RETELL_FROM_NUMBER),
+      exotelConfigured: Boolean(env.EXOTEL_API_KEY && env.EXOTEL_SID),
+      exotelReady: Boolean(env.EXOTEL_CALLER_ID && env.EXOTEL_FLOW_URL),
       email: Boolean(env.RESEND_API_KEY),
       payments: mode,
       paymentsWebhookSecret: Boolean(env.RAZORPAY_WEBHOOK_SECRET),

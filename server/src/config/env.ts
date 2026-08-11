@@ -22,7 +22,7 @@ const envSchema = z
     CORS_ORIGIN: z.string().default('http://localhost:5173'),
     UPLOAD_DIR: z.string().default('./uploads'),
     MAX_UPLOAD_MB: z.coerce.number().default(15),
-    VOICE_PROVIDER: z.enum(['mock', 'vapi', 'retell']).default('mock'),
+    VOICE_PROVIDER: z.enum(['mock', 'vapi', 'retell', 'exotel']).default('mock'),
     ANTHROPIC_API_KEY: z.string().optional().default(''),
     INTERVIEW_MODEL: z.string().default('claude-sonnet-5'),
     // Alternative interview LLM when no Anthropic key is set.
@@ -52,6 +52,23 @@ const envSchema = z
       .enum(['true', 'false'])
       .default('true')
       .transform((v) => v === 'true'),
+    // Exotel voice engine (VOICE_PROVIDER=exotel). Places outbound calls via the
+    // Connect API to a Call Flow containing the Exotel Voicebot applet; call
+    // outcomes arrive on the status webhook. The AI itself is configured in the
+    // Exotel Voicebot dashboard (no API), not in the Vorizon wizard.
+    EXOTEL_API_KEY: z.string().optional().default(''),
+    EXOTEL_API_TOKEN: z.string().optional().default(''),
+    EXOTEL_SID: z.string().optional().default(''),
+    // API cluster host, e.g. api.exotel.com (Singapore) or api.in.exotel.com (India).
+    EXOTEL_SUBDOMAIN: z.string().default('api.exotel.com'),
+    // An ExoPhone you own (E.164) used as caller ID for outbound.
+    EXOTEL_CALLER_ID: z.string().optional().default(''),
+    // The App/Flow URL that runs the Voicebot, from Exotel App Bazaar, e.g.
+    // http://my.exotel.com/<sid>/exoml/start_voice/<APP_ID>
+    EXOTEL_FLOW_URL: z.string().optional().default(''),
+    // Shared secret appended to the status-callback URL and checked on receipt
+    // (Exotel does not sign webhooks). Leave blank to accept unauthenticated.
+    EXOTEL_WEBHOOK_TOKEN: z.string().optional().default(''),
     RATE_LIMIT_MAX: z.coerce.number().default(300),
     // Optional: enables Firestore-backed rate limiting, durable campaign queue,
     // and raw upload storage. Service account as inline JSON or a key-file path
@@ -80,6 +97,24 @@ const envSchema = z
         message: 'RETELL_API_KEY is required when VOICE_PROVIDER=retell',
         path: ['RETELL_API_KEY'],
       });
+    }
+    if (val.VOICE_PROVIDER === 'exotel') {
+      const missing = (
+        [
+          ['EXOTEL_API_KEY', val.EXOTEL_API_KEY],
+          ['EXOTEL_API_TOKEN', val.EXOTEL_API_TOKEN],
+          ['EXOTEL_SID', val.EXOTEL_SID],
+          ['EXOTEL_CALLER_ID', val.EXOTEL_CALLER_ID],
+          ['EXOTEL_FLOW_URL', val.EXOTEL_FLOW_URL],
+        ] as const
+      ).filter(([, v]) => !v);
+      for (const [key] of missing) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${key} is required when VOICE_PROVIDER=exotel`,
+          path: [key],
+        });
+      }
     }
     // In production, refuse to boot with weak or default secrets.
     if (val.NODE_ENV !== 'production') return;
