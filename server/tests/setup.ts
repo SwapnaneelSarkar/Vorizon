@@ -21,6 +21,10 @@ process.env.RESEND_API_KEY = '';
 process.env.ANTHROPIC_API_KEY = '';
 process.env.OPENAI_API_KEY = '';
 
+// Force Exotel webhook token OFF (server/.env may set it) so webhook tests
+// exercise the open path; keep the provider on the mock engine.
+process.env.EXOTEL_WEBHOOK_TOKEN = '';
+
 let mongod: MongoMemoryServer;
 
 beforeAll(async () => {

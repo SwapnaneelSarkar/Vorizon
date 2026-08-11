@@ -9,6 +9,8 @@ import { analyticsRoutes } from './modules/analytics/analytics.routes.js';
 import { organizationRoutes } from './modules/organizations/organizations.routes.js';
 import { complianceRoutes } from './modules/compliance/compliance.routes.js';
 import { paymentRoutes } from './modules/payments/payments.routes.js';
+import { integrationRoutes } from './modules/integrations/integrations.routes.js';
+import { leadRoutes } from './modules/integrations/leads.routes.js';
 import { retellWebhookRoutes } from './voice/retellWebhook.js';
 import { exotelWebhookRoutes } from './voice/exotelWebhook.js';
 import { devRoutes } from './modules/dev/dev.routes.js';
@@ -37,6 +39,8 @@ apiRouter.use('/billing', billingRoutes);
 apiRouter.use('/analytics', analyticsRoutes);
 apiRouter.use('/compliance', complianceRoutes);
 apiRouter.use('/payments', paymentRoutes);
+apiRouter.use('/integrations', integrationRoutes);
+apiRouter.use('/leads', leadRoutes);
 // Voice-provider webhooks (authenticated by signature/token, no JWT).
 apiRouter.use('/voice', retellWebhookRoutes);
 apiRouter.use('/voice', exotelWebhookRoutes);

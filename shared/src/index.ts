@@ -6,4 +6,5 @@ export * from './schemas/contact.js';
 export * from './schemas/campaign.js';
 export * from './schemas/compliance.js';
 export * from './schemas/payment.js';
+export * from './schemas/integration.js';
 export * from './types/dto.js';

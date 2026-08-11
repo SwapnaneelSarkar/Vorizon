@@ -3,10 +3,13 @@ import type {
   CallDirection,
   CallOutcome,
   CampaignStatus,
+  ConnectionStatus,
+  ConnectorProvider,
   DncReason,
   EmployeeStatus,
   EmployeeType,
   KnowledgeKind,
+  LeadStatus,
   PaymentStatus,
   ResponsibilityKind,
   Role,
@@ -179,6 +182,40 @@ export interface PaymentOrderDTO {
   amount: number;
   currency: string;
   keyId: string;
+}
+
+/** A connector in the catalog, with this org's live connection status. */
+export interface ConnectorInfo {
+  provider: ConnectorProvider;
+  name: string;
+  category: 'ads' | 'messaging' | 'crm' | 'calendar' | 'payments' | 'telephony';
+  description: string;
+  /** False when the server lacks the OAuth app credentials for this provider. */
+  configured: boolean;
+  connection?: ConnectionDTO;
+}
+
+export interface ConnectionDTO {
+  id: string;
+  provider: ConnectorProvider;
+  status: ConnectionStatus;
+  accountLabel?: string;
+  connectedAt?: string;
+  lastError?: string;
+}
+
+export interface LeadDTO {
+  id: string;
+  source: ConnectorProvider | 'manual' | 'webhook';
+  name: string;
+  phone?: string;
+  email?: string;
+  company?: string;
+  campaignId?: string;
+  status: LeadStatus;
+  score?: number;
+  aiSummary?: string;
+  createdAt: string;
 }
 
 export interface ApiError {

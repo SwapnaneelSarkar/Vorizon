@@ -69,6 +69,27 @@ const envSchema = z
     // Shared secret appended to the status-callback URL and checked on receipt
     // (Exotel does not sign webhooks). Leave blank to accept unauthenticated.
     EXOTEL_WEBHOOK_TOKEN: z.string().optional().default(''),
+    // ---- Connector OAuth app credentials (per provider; unset → configured:false) ----
+    GOOGLE_CLIENT_ID: z.string().optional().default(''),
+    GOOGLE_CLIENT_SECRET: z.string().optional().default(''),
+    META_APP_ID: z.string().optional().default(''),
+    META_APP_SECRET: z.string().optional().default(''),
+    HUBSPOT_CLIENT_ID: z.string().optional().default(''),
+    HUBSPOT_CLIENT_SECRET: z.string().optional().default(''),
+    SALESFORCE_CLIENT_ID: z.string().optional().default(''),
+    SALESFORCE_CLIENT_SECRET: z.string().optional().default(''),
+    ZOHO_CLIENT_ID: z.string().optional().default(''),
+    ZOHO_CLIENT_SECRET: z.string().optional().default(''),
+    TWILIO_CLIENT_ID: z.string().optional().default(''),
+    TWILIO_CLIENT_SECRET: z.string().optional().default(''),
+    STRIPE_CLIENT_ID: z.string().optional().default(''),
+    STRIPE_CLIENT_SECRET: z.string().optional().default(''),
+    // Encrypts stored OAuth tokens at rest (AES-256-GCM). Falls back to a key
+    // derived from JWT_ACCESS_SECRET when unset; set explicitly in production.
+    INTEGRATIONS_ENCRYPTION_KEY: z.string().optional().default(''),
+    // Public base URL of THIS API (for OAuth redirect URIs). Defaults to APP_BASE_URL's
+    // sibling isn't reliable, so set to the API origin in production.
+    API_BASE_URL: z.string().optional().default(''),
     RATE_LIMIT_MAX: z.coerce.number().default(300),
     // Optional: enables Firestore-backed rate limiting, durable campaign queue,
     // and raw upload storage. Service account as inline JSON or a key-file path

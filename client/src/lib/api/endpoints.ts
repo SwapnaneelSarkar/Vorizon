@@ -3,6 +3,7 @@ import type {
   AuthResponse,
   CampaignDTO,
   ComplianceSettingsDTO,
+  ConnectorInfo,
   ContactDTO,
   ContactImportResult,
   CreateCampaignInput,
@@ -11,6 +12,7 @@ import type {
   DncEntryDTO,
   InterviewReply,
   KnowledgeItemDTO,
+  LeadDTO,
   LoginInput,
   PaymentDTO,
   PaymentOrderDTO,
@@ -176,6 +178,24 @@ export const complianceApi = {
     unwrap<DncEntryDTO>(api.post('/compliance/dnc', { phone, note })),
   removeDnc: (id: string) => api.delete(`/compliance/dnc/${id}`),
   optOut: (phone: string) => unwrap<DncEntryDTO>(api.post('/compliance/opt-out', { phone })),
+};
+
+// ---- integrations / connectors ----
+export const integrationApi = {
+  list: () =>
+    unwrap<{ connectors: ConnectorInfo[]; leadIntakeUrl: string }>(api.get('/integrations')),
+  connect: (provider: string) =>
+    unwrap<{ authUrl: string }>(api.post(`/integrations/${provider}/connect`)),
+  disconnect: (provider: string) => api.delete(`/integrations/${provider}`),
+};
+
+// ---- leads ----
+export const leadApi = {
+  list: (params?: { status?: string }) =>
+    unwrap<{ items: LeadDTO[]; total: number }>(api.get('/leads', { params })),
+  stats: () => unwrap<Record<string, number>>(api.get('/leads/stats')),
+  create: (input: { name: string; phone?: string; email?: string; company?: string }) =>
+    unwrap<LeadDTO>(api.post('/leads', input)),
 };
 
 // ---- payments (Razorpay) ----

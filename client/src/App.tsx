@@ -14,6 +14,10 @@ const EmployeeWizardPage = lazy(() =>
   import('./pages/employees/EmployeeWizard').then((m) => ({ default: m.EmployeeWizardPage })),
 );
 const ContactsPage = lazy(() => import('./pages/Contacts').then((m) => ({ default: m.ContactsPage })));
+const IntegrationsPage = lazy(() =>
+  import('./pages/Integrations').then((m) => ({ default: m.IntegrationsPage })),
+);
+const LeadsPage = lazy(() => import('./pages/Leads').then((m) => ({ default: m.LeadsPage })));
 const CampaignsPage = lazy(() =>
   import('./pages/campaigns/CampaignsList').then((m) => ({ default: m.CampaignsPage })),
 );
@@ -39,6 +43,8 @@ export function App() {
           <Route path="/employees/new" element={protect(<EmployeeWizardPage />)} />
           <Route path="/employees/:id" element={protect(<EmployeeWizardPage />)} />
           <Route path="/contacts" element={protect(<ContactsPage />)} />
+          <Route path="/integrations" element={protect(<IntegrationsPage />)} />
+          <Route path="/leads" element={protect(<LeadsPage />)} />
           <Route path="/campaigns" element={protect(<CampaignsPage />)} />
           <Route path="/campaigns/new" element={protect(<CampaignNewPage />)} />
           <Route path="/analytics" element={protect(<AnalyticsPage />)} />

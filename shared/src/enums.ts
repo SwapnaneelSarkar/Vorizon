@@ -54,6 +54,38 @@ export type DncReason = (typeof DNC_REASONS)[number];
 export const PAYMENT_STATUSES = ['created', 'paid', 'failed'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
+/** External platforms Vorizon connects to (the integration catalog). */
+export const CONNECTOR_PROVIDERS = [
+  'google_ads',
+  'meta_ads',
+  'whatsapp',
+  'instagram',
+  'facebook_pages',
+  'gmail',
+  'google_calendar',
+  'hubspot',
+  'salesforce',
+  'zoho',
+  'twilio',
+  'stripe',
+] as const;
+export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
+
+export const CONNECTION_STATUSES = ['connected', 'disconnected', 'error', 'expired'] as const;
+export type ConnectionStatus = (typeof CONNECTION_STATUSES)[number];
+
+/** Lead lifecycle across the closed loop (ad → qualify → call → deal). */
+export const LEAD_STATUSES = [
+  'new',
+  'qualifying',
+  'qualified',
+  'unqualified',
+  'contacted',
+  'converted',
+  'lost',
+] as const;
+export type LeadStatus = (typeof LEAD_STATUSES)[number];
+
 /** Preset responsibilities from the requirement doc. */
 export const RESPONSIBILITY_PRESETS = [
   'Answer customer questions',
