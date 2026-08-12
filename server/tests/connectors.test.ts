@@ -1,9 +1,10 @@
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app.js';
+import { Connection } from '../src/models/Connection.js';
 import { Lead } from '../src/models/Lead.js';
 import { encryptToken, decryptToken } from '../src/modules/integrations/crypto.js';
-import { leadIntakeToken } from '../src/modules/integrations/integrations.service.js';
+import { handleCallback, leadIntakeToken } from '../src/modules/integrations/integrations.service.js';
 
 const app = createApp();
 
@@ -75,6 +76,52 @@ describe('connector catalog', () => {
     await bearer(login.body.data.tokens.accessToken)(
       request(app).post('/api/integrations/hubspot/connect'),
     ).expect(403);
+  });
+});
+
+describe('OAuth token exchange (handleCallback)', () => {
+  const ORG = '6a75000000000000000000ff';
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('stores an ENCRYPTED token on a successful exchange', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ access_token: 'at_secret_google', refresh_token: 'rt_x', expires_in: 3600 }),
+            { status: 200 },
+          ),
+      ),
+    );
+    await handleCallback('google_ads', 'good_code', ORG);
+    const conn = await Connection.findOne({ organizationId: ORG, provider: 'google_ads' });
+    expect(conn?.status).toBe('connected');
+    expect(conn?.accessTokenEnc).toBeTruthy();
+    expect(conn?.accessTokenEnc).not.toContain('at_secret_google'); // stored encrypted
+    expect(decryptToken(conn!.accessTokenEnc)).toBe('at_secret_google');
+    expect(conn?.expiresAt).toBeTruthy();
+  });
+
+  it('marks the connection ERROR (not connected) when a provider returns 200 with an { error } body — the Zoho case', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ error: 'invalid_code' }), { status: 200 })),
+    );
+    await expect(handleCallback('zoho', 'bad_code', ORG)).rejects.toThrow();
+    const conn = await Connection.findOne({ organizationId: ORG, provider: 'zoho' });
+    expect(conn?.status).toBe('error');
+    expect(conn?.accessTokenEnc).toBe(''); // never stored a bogus/empty token as "connected"
+  });
+
+  it('marks the connection ERROR on a non-2xx exchange (Google 400)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ error: 'invalid_grant' }), { status: 400 })),
+    );
+    await expect(handleCallback('google_ads', 'bad', ORG)).rejects.toThrow();
+    const conn = await Connection.findOne({ organizationId: ORG, provider: 'google_ads' });
+    expect(conn?.status).toBe('error');
   });
 });
 

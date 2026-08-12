@@ -25,6 +25,27 @@ process.env.OPENAI_API_KEY = '';
 // exercise the open path; keep the provider on the mock engine.
 process.env.EXOTEL_WEBHOOK_TOKEN = '';
 
+// Force all connector OAuth app credentials OFF so the catalog is deterministic
+// (configured:false) regardless of what a developer's server/.env sets.
+for (const k of [
+  'GOOGLE_CLIENT_ID',
+  'GOOGLE_CLIENT_SECRET',
+  'META_APP_ID',
+  'META_APP_SECRET',
+  'HUBSPOT_CLIENT_ID',
+  'HUBSPOT_CLIENT_SECRET',
+  'SALESFORCE_CLIENT_ID',
+  'SALESFORCE_CLIENT_SECRET',
+  'ZOHO_CLIENT_ID',
+  'ZOHO_CLIENT_SECRET',
+  'TWILIO_CLIENT_ID',
+  'TWILIO_CLIENT_SECRET',
+  'STRIPE_CLIENT_ID',
+  'STRIPE_CLIENT_SECRET',
+]) {
+  process.env[k] = '';
+}
+
 let mongod: MongoMemoryServer;
 
 beforeAll(async () => {

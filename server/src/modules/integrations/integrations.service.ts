@@ -121,11 +121,18 @@ export async function handleCallback(
       }).toString(),
     });
     const text = await res.text();
-    if (!res.ok) {
-      logger.error({ provider, status: res.status, body: text.slice(0, 200) }, 'OAuth token exchange failed');
-      throw new Error(`token exchange ${res.status}`);
+    const parsed = (text ? JSON.parse(text) : {}) as typeof tokens & { error?: string };
+    // Some providers (e.g. Zoho) return HTTP 200 with an { error } body on
+    // failure, so validate the payload — not just the status code — before
+    // treating the connection as successful.
+    if (!res.ok || parsed.error || !parsed.access_token) {
+      logger.error(
+        { provider, status: res.status, err: parsed.error, body: text.slice(0, 200) },
+        'OAuth token exchange failed',
+      );
+      throw new Error(`token exchange failed: ${parsed.error ?? res.status}`);
     }
-    tokens = JSON.parse(text);
+    tokens = parsed;
   } catch (err) {
     await Connection.findOneAndUpdate(
       { organizationId: orgId, provider },
