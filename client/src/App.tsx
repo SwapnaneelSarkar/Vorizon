@@ -27,6 +27,8 @@ const CampaignNewPage = lazy(() =>
 const AnalyticsPage = lazy(() => import('./pages/Analytics').then((m) => ({ default: m.AnalyticsPage })));
 const BillingPage = lazy(() => import('./pages/Billing').then((m) => ({ default: m.BillingPage })));
 const SettingsPage = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
+const PrivacyPage = lazy(() => import('./pages/Privacy').then((m) => ({ default: m.PrivacyPage })));
+const TermsPage = lazy(() => import('./pages/Terms').then((m) => ({ default: m.TermsPage })));
 
 const protect = (el: JSX.Element) => <ProtectedRoute>{el}</ProtectedRoute>;
 
@@ -37,6 +39,8 @@ export function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
 
           <Route path="/" element={protect(<DashboardPage />)} />
           <Route path="/employees" element={protect(<EmployeesPage />)} />

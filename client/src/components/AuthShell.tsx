@@ -1,5 +1,6 @@
 import { BarChart3, PhoneCall, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import logoIcon from '../assets/logo-icon.png';
 import logoFull from '../assets/logo-full.png';
 
@@ -70,6 +71,17 @@ export function AuthShell({ children }: { children: ReactNode }) {
             className="mx-auto mb-8 w-full max-w-xs"
           />
           {children}
+          <p className="mt-6 text-center text-xs text-slate-400">
+            By continuing you agree to our{' '}
+            <Link to="/terms" className="text-slate-500 hover:underline">
+              Terms
+            </Link>{' '}
+            and{' '}
+            <Link to="/privacy" className="text-slate-500 hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </div>
