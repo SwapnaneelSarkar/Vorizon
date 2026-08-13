@@ -10,6 +10,7 @@ import { organizationRoutes } from './modules/organizations/organizations.routes
 import { complianceRoutes } from './modules/compliance/compliance.routes.js';
 import { paymentRoutes } from './modules/payments/payments.routes.js';
 import { integrationRoutes } from './modules/integrations/integrations.routes.js';
+import { whatsappRoutes } from './modules/integrations/whatsapp.routes.js';
 import { leadRoutes } from './modules/integrations/leads.routes.js';
 import { retellWebhookRoutes } from './voice/retellWebhook.js';
 import { exotelWebhookRoutes } from './voice/exotelWebhook.js';
@@ -39,6 +40,9 @@ apiRouter.use('/billing', billingRoutes);
 apiRouter.use('/analytics', analyticsRoutes);
 apiRouter.use('/compliance', complianceRoutes);
 apiRouter.use('/payments', paymentRoutes);
+// WhatsApp Cloud API webhook — mounted before the generic integration routes
+// so /integrations/whatsapp/webhook is handled here (public, Meta-verified).
+apiRouter.use('/integrations/whatsapp', whatsappRoutes);
 apiRouter.use('/integrations', integrationRoutes);
 apiRouter.use('/leads', leadRoutes);
 // Voice-provider webhooks (authenticated by signature/token, no JWT).

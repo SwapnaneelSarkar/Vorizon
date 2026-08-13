@@ -31,7 +31,6 @@ for (const k of [
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
   'META_APP_ID',
-  'META_APP_SECRET',
   'HUBSPOT_CLIENT_ID',
   'HUBSPOT_CLIENT_SECRET',
   'SALESFORCE_CLIENT_ID',
@@ -45,6 +44,11 @@ for (const k of [
 ]) {
   process.env[k] = '';
 }
+// Deterministic WhatsApp webhook config for tests. META_APP_ID stays cleared
+// above (so meta_ads shows configured:false), but META_APP_SECRET is provided
+// here because the webhook signature check reads it directly.
+process.env.META_APP_SECRET = 'test-meta-app-secret';
+process.env.WHATSAPP_VERIFY_TOKEN = 'test-verify-token-123';
 
 let mongod: MongoMemoryServer;
 

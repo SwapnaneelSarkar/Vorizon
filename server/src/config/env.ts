@@ -74,6 +74,12 @@ const envSchema = z
     GOOGLE_CLIENT_SECRET: z.string().optional().default(''),
     META_APP_ID: z.string().optional().default(''),
     META_APP_SECRET: z.string().optional().default(''),
+    // WhatsApp Cloud API (Meta) — webhook verification + sending. The verify
+    // token is an arbitrary secret we choose and paste into Meta's webhook config;
+    // inbound webhooks are signed with META_APP_SECRET (X-Hub-Signature-256).
+    WHATSAPP_VERIFY_TOKEN: z.string().optional().default(''),
+    WHATSAPP_PHONE_NUMBER_ID: z.string().optional().default(''),
+    WHATSAPP_ACCESS_TOKEN: z.string().optional().default(''),
     HUBSPOT_CLIENT_ID: z.string().optional().default(''),
     HUBSPOT_CLIENT_SECRET: z.string().optional().default(''),
     SALESFORCE_CLIENT_ID: z.string().optional().default(''),
