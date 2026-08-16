@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import {
+  AlertTriangle,
   BadgeCheck,
   Calendar,
   CreditCard,
@@ -10,6 +11,7 @@ import {
   Phone,
   Plug,
   Users,
+  X,
 } from 'lucide-react';
 import type { ConnectorInfo } from '@vorizon/shared';
 import { integrationApi } from '../lib/api/endpoints';
@@ -105,9 +107,24 @@ function ConnectorCard({ c, onChanged }: { c: ConnectorInfo; onChanged: () => vo
   );
 }
 
+/** Actionable copy for the OAuth-callback error codes our backend redirects with. */
+function errorHelp(code: string): string {
+  switch (code) {
+    case 'access_denied':
+      return 'Google blocked the sign-in because the app is still unverified. Add your email as a Test User in Google Cloud → APIs & Services → OAuth consent screen → Test users, then try again.';
+    case 'invalid_state':
+      return 'That connection link expired. Please click Connect again.';
+    case 'connect_failed':
+      return 'We couldn’t complete the connection. Please try again, or check the provider’s app credentials.';
+    default:
+      return `Connection failed: ${code.replace(/_/g, ' ')}.`;
+  }
+}
+
 export function IntegrationsPage() {
   const qc = useQueryClient();
   const [params, setParams] = useSearchParams();
+  const [oauthError, setOauthError] = useState('');
   const { data, isLoading } = useQuery({ queryKey: ['integrations'], queryFn: integrationApi.list });
   const refresh = () => qc.invalidateQueries({ queryKey: ['integrations'] });
 
@@ -119,7 +136,9 @@ export function IntegrationsPage() {
       toast.success(`${connected.replace(/_/g, ' ')} connected`);
       refresh();
     }
-    if (error) toast.error(`Connection failed: ${error.replace(/_/g, ' ')}`);
+    // Errors persist in a dismissible banner (they're long and actionable) rather
+    // than a transient toast.
+    if (error) setOauthError(errorHelp(error));
     if (connected || error) setParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -137,6 +156,20 @@ export function IntegrationsPage() {
         title="Integrations"
         description="Connect your ad platforms, CRMs and messaging to run the full lead-to-revenue loop"
       />
+
+      {oauthError && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+          <p className="flex-1 text-sm text-amber-800">{oauthError}</p>
+          <button
+            onClick={() => setOauthError('')}
+            className="shrink-0 text-amber-400 hover:text-amber-600"
+            aria-label="Dismiss"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <Card className="mb-6 flex items-start gap-3 border-blue-100 bg-blue-50/50">
         <Plug className="mt-0.5 h-5 w-5 shrink-0 text-blue-500" />
