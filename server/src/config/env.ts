@@ -39,6 +39,10 @@ const envSchema = z
     EMAIL_FROM: z.string().default('Vorizon <onboarding@resend.dev>'),
     // Where replies go (e.g. the business inbox) — may be any address.
     EMAIL_REPLY_TO: z.string().optional().default(''),
+    // Gmail SMTP (preferred when set): sends from GMAIL_USER to ANY recipient,
+    // unlike Resend's free tier. GMAIL_APP_PASSWORD is a Google App Password.
+    GMAIL_USER: z.string().optional().default(''),
+    GMAIL_APP_PASSWORD: z.string().optional().default(''),
     // Razorpay payments. Both unset → payment endpoints return 503.
     RAZORPAY_KEY_ID: z.string().optional().default(''),
     RAZORPAY_KEY_SECRET: z.string().optional().default(''),

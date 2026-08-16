@@ -25,7 +25,8 @@ export function logBootDiagnostics(entrypoint: string): void {
       retellOutboundNumber: Boolean(env.RETELL_FROM_NUMBER),
       exotelConfigured: Boolean(env.EXOTEL_API_KEY && env.EXOTEL_SID),
       exotelReady: Boolean(env.EXOTEL_CALLER_ID && env.EXOTEL_FLOW_URL),
-      email: Boolean(env.RESEND_API_KEY),
+      email:
+        env.GMAIL_USER && env.GMAIL_APP_PASSWORD ? 'gmail' : env.RESEND_API_KEY ? 'resend' : 'none',
       payments: mode,
       paymentsWebhookSecret: Boolean(env.RAZORPAY_WEBHOOK_SECRET),
       interviewLlm: env.ANTHROPIC_API_KEY ? 'anthropic' : env.OPENAI_API_KEY ? 'openai' : 'echo',

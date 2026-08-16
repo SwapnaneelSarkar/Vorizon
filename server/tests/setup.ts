@@ -18,6 +18,8 @@ delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
 // Likewise force email + interview LLMs OFF so tests never call live services.
 process.env.RESEND_API_KEY = '';
+process.env.GMAIL_USER = '';
+process.env.GMAIL_APP_PASSWORD = '';
 process.env.ANTHROPIC_API_KEY = '';
 process.env.OPENAI_API_KEY = '';
 
