@@ -22,6 +22,7 @@ import type {
   UpdateEmployeeInput,
   UsageSummary,
   UserDTO,
+  WalletDTO,
 } from '@vorizon/shared';
 import { api } from './client';
 
@@ -165,6 +166,7 @@ export const analyticsApi = {
 export const billingApi = {
   usage: () => unwrap<UsageSummary>(api.get('/billing/usage')),
   estimate: () => unwrap<{ projectedMonthlyUsd: number }>(api.get('/billing/estimate')),
+  wallet: () => unwrap<WalletDTO>(api.get('/billing/wallet')),
 };
 
 // ---- compliance ----

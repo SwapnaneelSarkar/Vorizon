@@ -3,6 +3,7 @@ import { requireAuth } from '../../middleware/auth.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { ApiError } from '../../utils/apiError.js';
 import { loadEmployee } from '../aiEmployees/aiEmployees.service.js';
+import { hasBalance } from '../billing/wallet.service.js';
 import { handleCallEnded } from '../../voice/handleCallEvent.js';
 import type { CallOutcome } from '@vorizon/shared';
 
@@ -24,6 +25,10 @@ devRoutes.post(
     }
     if (!employee.activatedAt) {
       throw ApiError.badRequest('Activate the employee before simulating calls');
+    }
+    // Prepaid gate: no funds → no billable calls.
+    if (!(await hasBalance(orgId))) {
+      throw ApiError.precondition('Cannot place call', ['Add funds to your wallet (Billing)']);
     }
 
     const durationSec: number = Number(req.body?.durationSec ?? 125);

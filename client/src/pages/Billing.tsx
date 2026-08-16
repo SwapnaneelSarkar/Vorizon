@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ReceiptText } from 'lucide-react';
+import { AlertTriangle, ReceiptText, Wallet } from 'lucide-react';
 import { billingApi, paymentApi } from '../lib/api/endpoints';
 import { apiErrorMessage } from '../lib/api/client';
 import { useAuthStore } from '../store/authStore';
 import { Badge, Button, Card, Input, PageHeader, Spinner, toast } from '../components/ui';
-import { formatUsd } from '../lib/utils';
+import { cn, formatUsd } from '../lib/utils';
 
 /** Razorpay Checkout global, injected by their script. */
 interface RazorpayCheckout {
@@ -38,6 +38,7 @@ function PayCard() {
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['payments'] });
+    qc.invalidateQueries({ queryKey: ['wallet'] });
   };
 
   const pay = async () => {
@@ -99,9 +100,10 @@ function PayCard() {
 
   return (
     <Card>
-      <h2 className="mb-3 font-semibold text-slate-900">Make a Payment</h2>
+      <h2 className="mb-3 font-semibold text-slate-900">Add Funds</h2>
       <p className="mb-4 text-sm text-slate-500">
-        Pay securely via Razorpay to activate billing for your organization.
+        Top up your prepaid wallet via Razorpay. Calls are billed from your balance; services pause
+        when it runs out.
       </p>
       <div className="mb-3 flex gap-2">
         <div className="relative flex-1">
@@ -168,6 +170,68 @@ function PaymentHistory() {
   );
 }
 
+function WalletBanner() {
+  const { data: wallet } = useQuery({ queryKey: ['wallet'], queryFn: billingApi.wallet });
+  if (!wallet) return null;
+
+  const depleted = !wallet.active;
+  const low = wallet.low;
+  if (!depleted && !low) return null;
+
+  return (
+    <div
+      className={cn(
+        'mb-6 flex items-start gap-3 rounded-xl border p-4',
+        depleted ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50',
+      )}
+    >
+      <AlertTriangle
+        className={cn('mt-0.5 h-5 w-5 shrink-0', depleted ? 'text-red-500' : 'text-amber-500')}
+      />
+      <div className="text-sm">
+        <p className={cn('font-semibold', depleted ? 'text-red-800' : 'text-amber-800')}>
+          {depleted ? 'Services paused — your wallet is empty' : 'Low balance'}
+        </p>
+        <p className={depleted ? 'text-red-600' : 'text-amber-600'}>
+          {depleted
+            ? 'AI calling is paused. Add funds below to resume immediately.'
+            : `Your balance is ${formatUsd(wallet.balanceUsd)}. Top up to avoid interruption.`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function WalletCard() {
+  const { data: wallet } = useQuery({ queryKey: ['wallet'], queryFn: billingApi.wallet });
+  const balance = wallet?.balanceUsd ?? 0;
+  const active = wallet?.active ?? false;
+  return (
+    <Card className="flex items-center gap-4">
+      <div
+        className={cn(
+          'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl',
+          active ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500',
+        )}
+      >
+        <Wallet className="h-6 w-6" />
+      </div>
+      <div>
+        <p className="text-sm text-slate-500">Wallet Balance</p>
+        <p className="mt-0.5 text-3xl font-bold tracking-tight text-slate-900">{formatUsd(balance)}</p>
+        <span
+          className={cn(
+            'mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
+            active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700',
+          )}
+        >
+          {active ? 'Services active' : 'Services paused'}
+        </span>
+      </div>
+    </Card>
+  );
+}
+
 export function BillingPage() {
   const { data: usage, isLoading } = useQuery({ queryKey: ['usage'], queryFn: billingApi.usage });
   const { data: estimate } = useQuery({ queryKey: ['estimate'], queryFn: billingApi.estimate });
@@ -178,10 +242,13 @@ export function BillingPage() {
     <div>
       <PageHeader
         title="Billing"
-        description={`Usage-based billing at ${formatUsd(usage.rateUsd)} per conversation minute`}
+        description={`Prepaid wallet · calls billed at ${formatUsd(usage.rateUsd)} per conversation minute`}
       />
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <WalletBanner />
+
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <WalletCard />
         <Card>
           <p className="text-sm text-slate-500">Total Minutes</p>
           <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900">{usage.totalMinutes}</p>

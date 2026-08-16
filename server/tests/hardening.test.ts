@@ -2,6 +2,7 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { campaignQueue } from '../src/modules/campaigns/campaignQueue.js';
+import { credit } from '../src/modules/billing/wallet.service.js';
 
 const app = createApp();
 
@@ -90,6 +91,8 @@ describe('async campaign runner', () => {
   it('launches asynchronously and completes via the queue', async () => {
     const { token } = await newOwner();
     const auth = bearer(token);
+    const me = await auth(request(app).get('/api/auth/me')).expect(200);
+    await credit(me.body.data.user.organizationId, 20, 'test'); // fund the prepaid wallet
 
     const emp = await auth(
       request(app).post('/api/ai-employees').send({ type: 'outbound', name: 'Sam', department: 'Sales' }),

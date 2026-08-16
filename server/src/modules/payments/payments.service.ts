@@ -9,6 +9,7 @@ import { ApiError } from '../../utils/apiError.js';
 import { recordAudit } from '../../utils/audit.js';
 import { logger } from '../../utils/logger.js';
 import { sendNotificationEmail } from '../email/email.service.js';
+import { credit, inrPaiseToUsd } from '../billing/wallet.service.js';
 
 type PaymentRecord = PaymentDoc & { _id: unknown; createdAt?: Date };
 
@@ -134,6 +135,9 @@ export async function markPaid(
   await (payment as unknown as { save(): Promise<unknown> }).save();
 
   const orgId = String(payment.organizationId);
+  // Credit the prepaid wallet with the USD equivalent of the INR payment.
+  const creditedUsd = inrPaiseToUsd(payment.amount);
+  const balanceUsd = await credit(orgId, creditedUsd, 'payment', String(payment._id));
   await Organization.updateOne({ _id: orgId }, { billingStatus: 'active' });
   await recordAudit({
     organizationId: orgId,
@@ -141,7 +145,7 @@ export async function markPaid(
     action: 'payment.succeeded',
     targetType: 'Payment',
     targetId: String(payment._id),
-    metadata: { razorpayOrderId, razorpayPaymentId, amount: payment.amount, verifiedVia },
+    metadata: { razorpayOrderId, razorpayPaymentId, amount: payment.amount, creditedUsd, verifiedVia },
   });
 
   const payer = payment.createdByUserId
@@ -151,7 +155,7 @@ export async function markPaid(
     await sendNotificationEmail(
       payer.email,
       'Payment received',
-      `Your payment of ₹${(payment.amount / 100).toFixed(2)} was successful. Billing is now active.`,
+      `Your payment of ₹${(payment.amount / 100).toFixed(2)} added $${creditedUsd.toFixed(2)} to your wallet. New balance: $${balanceUsd.toFixed(2)}.`,
       { label: 'View billing', url: `${env.APP_BASE_URL}/billing` },
     );
   }

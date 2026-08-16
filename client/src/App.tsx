@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Spinner } from './components/ui';
+import { useAuthStore } from './store/authStore';
 
 const LoginPage = lazy(() => import('./pages/Login').then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/Register').then((m) => ({ default: m.RegisterPage })));
@@ -29,8 +30,18 @@ const BillingPage = lazy(() => import('./pages/Billing').then((m) => ({ default:
 const SettingsPage = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
 const PrivacyPage = lazy(() => import('./pages/Privacy').then((m) => ({ default: m.PrivacyPage })));
 const TermsPage = lazy(() => import('./pages/Terms').then((m) => ({ default: m.TermsPage })));
+const LandingPage = lazy(() => import('./pages/marketing/Landing').then((m) => ({ default: m.LandingPage })));
+const PricingPage = lazy(() => import('./pages/marketing/Pricing').then((m) => ({ default: m.PricingPage })));
+const AboutPage = lazy(() => import('./pages/marketing/About').then((m) => ({ default: m.AboutPage })));
+const ContactPage = lazy(() => import('./pages/marketing/Contact').then((m) => ({ default: m.ContactPage })));
 
 const protect = (el: JSX.Element) => <ProtectedRoute>{el}</ProtectedRoute>;
+
+/** Root: the marketing landing page for visitors, the app dashboard for signed-in users. */
+function RootRoute() {
+  const token = useAuthStore((s) => s.accessToken);
+  return token ? <ProtectedRoute><DashboardPage /></ProtectedRoute> : <LandingPage />;
+}
 
 export function App() {
   return (
@@ -41,8 +52,11 @@ export function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
 
-          <Route path="/" element={protect(<DashboardPage />)} />
+          <Route path="/" element={<RootRoute />} />
           <Route path="/employees" element={protect(<EmployeesPage />)} />
           <Route path="/employees/new" element={protect(<EmployeeWizardPage />)} />
           <Route path="/employees/:id" element={protect(<EmployeeWizardPage />)} />

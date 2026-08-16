@@ -5,6 +5,7 @@ import { Contact } from '../../models/Contact.js';
 import { ApiError } from '../../utils/apiError.js';
 import { loadEmployee, refreshStatus } from '../aiEmployees/aiEmployees.service.js';
 import { hasCallingConsent } from '../compliance/compliance.service.js';
+import { hasBalance } from '../billing/wallet.service.js';
 import { campaignQueue } from './campaignQueue.js';
 
 type CampaignRecord = HydratedDocument<CampaignDoc>;
@@ -94,6 +95,13 @@ export async function launchCampaign(orgId: string, id: string): Promise<Campaig
   if (!(await hasCallingConsent(orgId))) {
     throw ApiError.precondition('Cannot launch campaign', [
       'Accept the AI calling consent (Settings → Compliance)',
+    ]);
+  }
+
+  // Prepaid gate: no funds → no outbound calling.
+  if (!(await hasBalance(orgId))) {
+    throw ApiError.precondition('Cannot launch campaign', [
+      'Add funds to your wallet (Billing) — services require a positive balance',
     ]);
   }
 

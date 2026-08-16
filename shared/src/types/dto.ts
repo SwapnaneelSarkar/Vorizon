@@ -163,6 +163,21 @@ export interface DncEntryDTO {
   createdAt: string;
 }
 
+export interface WalletDTO {
+  balanceUsd: number;
+  active: boolean;
+  low: boolean;
+  lowThresholdUsd: number;
+  transactions: {
+    id: string;
+    type: 'credit' | 'debit';
+    amountUsd: number;
+    balanceAfterUsd: number;
+    reason: string;
+    createdAt: string;
+  }[];
+}
+
 export interface PaymentDTO {
   id: string;
   razorpayOrderId: string;

@@ -8,6 +8,7 @@ import { Payment } from '../src/models/Payment.js';
 import { User } from '../src/models/User.js';
 import { campaignQueue } from '../src/modules/campaigns/campaignQueue.js';
 import { isEmailEnabled, sendEmail } from '../src/modules/email/email.service.js';
+import { credit } from '../src/modules/billing/wallet.service.js';
 
 const app = createApp();
 
@@ -103,7 +104,7 @@ describe('compliance: DNC + opt-out', () => {
 
 describe('compliance: campaign enforcement', () => {
   it('blocks launch without consent and never dials DNC numbers', async () => {
-    const { token } = await newOwner();
+    const { token, orgId } = await newOwner();
     const auth = bearer(token);
 
     // Build a launchable outbound employee.
@@ -153,6 +154,7 @@ describe('compliance: campaign enforcement', () => {
     expect(JSON.stringify(blocked.body.error.details.missing)).toMatch(/consent/i);
 
     await auth(request(app).post('/api/compliance/consent').send({ accepted: true })).expect(200);
+    await credit(orgId, 10, 'test'); // fund the prepaid wallet so the campaign can dial
     await auth(request(app).post(`/api/campaigns/${campaignId}/launch`)).expect(200);
     await campaignQueue.drain();
 

@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
+import { credit } from '../src/modules/billing/wallet.service.js';
 
 const app = createApp();
 
@@ -84,6 +85,10 @@ describe('inbound employee lifecycle', () => {
 
     const activated = await auth(request(app).post(`/api/ai-employees/${id}/activate`)).expect(200);
     expect(activated.body.data.status).toBe('active');
+
+    // Fund the prepaid wallet so the metered call is allowed.
+    const me = await auth(request(app).get('/api/auth/me')).expect(200);
+    await credit(me.body.data.user.organizationId, 5, 'test');
 
     // Simulate an inbound call → usage recorded.
     await auth(

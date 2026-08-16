@@ -38,6 +38,13 @@ const organizationSchema = new Schema(
       },
       default: undefined,
     },
+    // Prepaid wallet (USD). Payments credit it; calls debit it. Services are
+    // gated on balance > 0 (see wallet.service.ts).
+    walletBalanceUsd: { type: Number, default: 0 },
+    // When the last low-balance (<$1) email was sent, so we notify once per
+    // crossing rather than on every call. Cleared when a top-up lifts the
+    // balance back above the threshold.
+    walletLowNotifiedAt: { type: Date, default: null },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true },

@@ -22,11 +22,11 @@ import logoIcon from '../assets/logo-icon.png';
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/integrations', label: 'Integrations', icon: Plug },
   { to: '/employees', label: 'AI Employees', icon: Users },
   { to: '/campaigns', label: 'Campaigns', icon: PhoneOutgoing },
   { to: '/contacts', label: 'Contacts', icon: Contact },
   { to: '/leads', label: 'Leads', icon: Sparkles },
-  { to: '/integrations', label: 'Integrations', icon: Plug },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/billing', label: 'Billing', icon: CreditCard },
   { to: '/settings', label: 'Settings', icon: Settings },

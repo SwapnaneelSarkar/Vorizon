@@ -29,6 +29,8 @@ const envSchema = z
     OPENAI_API_KEY: z.string().optional().default(''),
     OPENAI_MODEL: z.string().default('gpt-4o-mini'),
     RATE_USD_PER_MINUTE: z.coerce.number().default(0.1),
+    // INR→USD rate for crediting Razorpay (INR) payments into the USD wallet.
+    USD_INR_RATE: z.coerce.number().default(83),
     // Public base URL of the web app (used in email links).
     APP_BASE_URL: z.string().default('http://localhost:5173'),
     // Resend transactional email. Unset → emails are skipped (logged, never throw).

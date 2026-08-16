@@ -3,6 +3,7 @@ import { UsageRecord } from '../models/UsageRecord.js';
 import { Campaign } from '../models/Campaign.js';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
+import { debit } from '../modules/billing/wallet.service.js';
 import type { CallEvent } from './VoiceEngine.js';
 
 /**
@@ -39,6 +40,8 @@ export async function handleCallEnded(event: CallEvent) {
   // Meter billable usage: ceil to the minute at the configured rate. Idempotent per call.
   const minutes = Math.max(1, Math.ceil(durationSec / 60));
   const rateUsd = env.RATE_USD_PER_MINUTE;
+  const amountUsd = Number((minutes * rateUsd).toFixed(4));
+  let metered = false;
   try {
     await UsageRecord.create({
       organizationId: event.organizationId,
@@ -46,12 +49,21 @@ export async function handleCallEnded(event: CallEvent) {
       callId: call._id,
       minutes,
       rateUsd,
-      amountUsd: Number((minutes * rateUsd).toFixed(4)),
+      amountUsd,
       billedAt: new Date(),
     });
+    metered = true;
   } catch (err) {
     // Duplicate key => already metered; safe to ignore.
     if ((err as { code?: number }).code !== 11000) throw err;
+  }
+
+  // Debit the prepaid wallet once per newly-metered call (idempotent via the
+  // UsageRecord unique-callId guard above — a duplicate webhook won't re-debit).
+  if (metered && amountUsd > 0) {
+    await debit(event.organizationId, amountUsd, 'call', String(call._id)).catch((err) =>
+      logger.error({ err, callId: String(call._id) }, 'Wallet debit failed'),
+    );
   }
 
   if (event.campaignId) {

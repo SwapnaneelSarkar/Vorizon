@@ -15,6 +15,7 @@ import {
   hasCallingConsent,
   recordSkippedCall,
 } from '../compliance/compliance.service.js';
+import { hasBalance } from '../billing/wallet.service.js';
 
 /** Deterministic mock outcome so runs are reproducible (no Math.random). */
 function mockOutcome(seed: number): { outcome: CallOutcome; durationSec: number; escalated: boolean } {
@@ -71,6 +72,15 @@ export async function runCampaign(orgId: string, campaignId: string): Promise<vo
     // Honor pause/stop between contacts.
     const current = await Campaign.findById(campaignId).select('status');
     if (!current || current.status !== 'running') return;
+
+    // Prepaid gate: pause the campaign the moment the wallet is depleted so we
+    // never place a call the org can't pay for (the depleted email fires from
+    // the debit that emptied it).
+    if (!(await hasBalance(orgId))) {
+      logger.info({ campaignId, orgId }, 'Campaign paused: wallet balance depleted');
+      await Campaign.updateOne({ _id: campaignId }, { status: 'paused' });
+      return;
+    }
 
     const contact = contacts[i];
 
