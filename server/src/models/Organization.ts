@@ -1,10 +1,10 @@
 import mongoose, { Schema, type InferSchemaType } from 'mongoose';
-import { BILLING_STATUSES } from '@vorizon/shared';
+import { BILLING_STATUSES, PLAN_TYPES } from '@vorizon/shared';
 
 const organizationSchema = new Schema(
   {
     name: { type: String, required: true },
-    plan: { type: String, enum: ['free', 'usage'], default: 'usage' },
+    plan: { type: String, enum: PLAN_TYPES, default: 'standard' },
     billingStatus: { type: String, enum: BILLING_STATUSES, default: 'inactive' },
     paymentMethod: {
       type: {

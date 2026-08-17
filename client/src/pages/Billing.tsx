@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, ReceiptText, Wallet } from 'lucide-react';
+import { AlertTriangle, Check, ExternalLink, ReceiptText, Sparkles, Wallet } from 'lucide-react';
 import { billingApi, paymentApi } from '../lib/api/endpoints';
 import { apiErrorMessage } from '../lib/api/client';
 import { useAuthStore } from '../store/authStore';
@@ -232,6 +233,50 @@ function WalletCard() {
   );
 }
 
+function PlanOverviewCard() {
+  return (
+    <Card className="relative mb-6 overflow-hidden border-slate-200 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 text-white shadow-md">
+      <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-brand-blue to-brand-purple px-3 py-0.5 text-xs font-bold uppercase tracking-wider text-white shadow-sm">
+              <Sparkles className="h-3 w-3" /> Active Plan
+            </span>
+            <span className="text-xs font-medium text-slate-300">Standard Subscription</span>
+          </div>
+          <h2 className="text-2xl font-bold text-white">Standard Platform Plan ($30 / month)</h2>
+          <p className="max-w-xl text-sm leading-relaxed text-slate-300">
+            Standard access for connecting Google Ads, Meta Ads, and CRM integrations. AI voice
+            conversations are billed from your prepaid wallet at $0.10/min.
+          </p>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1 text-xs text-slate-300">
+            <span className="inline-flex items-center gap-1.5">
+              <Check className="h-3.5 w-3.5 text-emerald-400" /> Google Ads Sync Active
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Check className="h-3.5 w-3.5 text-emerald-400" /> Meta Ads & WhatsApp
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Check className="h-3.5 w-3.5 text-emerald-400" /> CRM Sync (Zoho, Salesforce, HubSpot)
+            </span>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+          <Link
+            to="/pricing"
+            target="_blank"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white backdrop-blur transition hover:bg-white/20"
+          >
+            <span>Compare Plans</span>
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
+          <span className="text-[11px] text-slate-400">Prepaid voice wallet below</span>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export function BillingPage() {
   const { data: usage, isLoading } = useQuery({ queryKey: ['usage'], queryFn: billingApi.usage });
   const { data: estimate } = useQuery({ queryKey: ['estimate'], queryFn: billingApi.estimate });
@@ -242,8 +287,10 @@ export function BillingPage() {
     <div>
       <PageHeader
         title="Billing"
-        description={`Prepaid wallet · calls billed at ${formatUsd(usage.rateUsd)} per conversation minute`}
+        description={`Standard $30/mo plan · Calls billed at ${formatUsd(usage.rateUsd)} per conversation minute`}
       />
+
+      <PlanOverviewCard />
 
       <WalletBanner />
 

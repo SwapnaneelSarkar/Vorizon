@@ -54,6 +54,9 @@ export type DncReason = (typeof DNC_REASONS)[number];
 export const PAYMENT_STATUSES = ['created', 'paid', 'failed'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
+export const PLAN_TYPES = ['free', 'usage', 'standard'] as const;
+export type PlanType = (typeof PLAN_TYPES)[number];
+
 /** External platforms Vorizon connects to (the integration catalog). */
 export const CONNECTOR_PROVIDERS = [
   'google_ads',

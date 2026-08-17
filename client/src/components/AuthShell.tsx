@@ -17,8 +17,8 @@ const features = [
   },
   {
     icon: BarChart3,
-    title: 'Know every minute',
-    text: 'Live analytics and transparent usage-based billing at $0.10/min.',
+    title: 'Google Ads & Transparent Billing',
+    text: 'Standard $30/mo platform for Google Ads sync, with voice calls at $0.10/min.',
   },
 ];
 

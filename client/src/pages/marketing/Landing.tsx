@@ -297,13 +297,13 @@ export function LandingPage() {
               style={{ animationDelay: '400ms' }}
             >
               <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> No monthly fees
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Standard Plan at $30/mo
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Pay only for what you use
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Pay-as-you-go calling at $0.10/min
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Set up in minutes
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Instant Google Ads sync
               </span>
             </div>
           </div>
@@ -557,8 +557,8 @@ export function LandingPage() {
               {/* Stats */}
               <div className="mt-12 grid grid-cols-1 gap-8 border-t border-white/10 pt-10 text-center sm:grid-cols-3">
                 {[
-                  { stat: '24/7', label: 'AI calling, inbound & outbound' },
-                  { stat: '$0.10', label: 'per conversation minute — that’s it' },
+                  { stat: '$30/mo', label: 'Standard plan for Google Ads & CRM sync' },
+                  { stat: '$0.10', label: 'per conversation minute — zero waste' },
                   { stat: '10+', label: 'ad, CRM & messaging integrations' },
                 ].map((s) => (
                   <div key={s.label}>
@@ -606,7 +606,7 @@ export function LandingPage() {
                   See pricing
                 </Link>
               </div>
-              <p className="mt-6 text-sm text-blue-200/90">No monthly fees · Pay only for usage · Cancel anytime</p>
+              <p className="mt-6 text-sm text-blue-200/90">$30/mo Standard Plan · $0.10/min voice calls · Cancel anytime</p>
             </div>
           </div>
         </Reveal>

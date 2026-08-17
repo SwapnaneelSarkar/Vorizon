@@ -11,6 +11,7 @@ import type {
   KnowledgeKind,
   LeadStatus,
   PaymentStatus,
+  PlanType,
   ResponsibilityKind,
   Role,
   ValidationStatus,
@@ -28,6 +29,7 @@ export interface UserDTO {
 export interface OrganizationDTO {
   id: string;
   name: string;
+  plan?: PlanType;
   billingStatus: BillingStatus;
   paymentMethod?: { cardType: string; brand: string; last4: string; addedAt: string };
 }
