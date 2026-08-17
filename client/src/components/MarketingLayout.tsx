@@ -119,7 +119,7 @@ export function CtaButton({ to, children }: { to: string; children: ReactNode })
   return (
     <Link
       to={to}
-      className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-brand-blue to-brand-purple px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-105"
+      className="group inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-brand-blue to-brand-purple px-6 py-3 text-sm font-semibold text-white shadow-cta transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110"
     >
       {children}
     </Link>
