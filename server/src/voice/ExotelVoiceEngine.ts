@@ -44,7 +44,10 @@ export class ExotelVoiceEngine implements VoiceEngine {
       throw new Error('EXOTEL_CALLER_ID and EXOTEL_FLOW_URL are required for outbound calling');
     }
     const token = env.EXOTEL_WEBHOOK_TOKEN ? `?token=${encodeURIComponent(env.EXOTEL_WEBHOOK_TOKEN)}` : '';
-    const statusCallback = `${env.APP_BASE_URL.replace(/\/$/, '')}/api/voice/exotel/webhook${token}`;
+    // Must point at the API host, not APP_BASE_URL (the Vercel-hosted client) —
+    // Exotel calls this back directly, and the client has no such route.
+    const base = (env.API_BASE_URL || env.APP_BASE_URL).replace(/\/$/, '');
+    const statusCallback = `${base}/api/voice/exotel/webhook${token}`;
 
     // Round-tripped back to us on the status webhook to attribute the call.
     const customField = JSON.stringify({
