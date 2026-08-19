@@ -1,14 +1,34 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Bot, PhoneIncoming, PhoneOutgoing, Plus } from 'lucide-react';
+import { Bot, PhoneIncoming, PhoneOutgoing, Plus, Trash2 } from 'lucide-react';
 import { employeeApi } from '../../lib/api/endpoints';
-import { Badge, Button, Card, EmptyState, PageHeader, Spinner } from '../../components/ui';
+import { apiErrorMessage } from '../../lib/api/client';
+import {
+  Badge,
+  Button,
+  Card,
+  ConfirmButton,
+  EmptyState,
+  PageHeader,
+  Spinner,
+  toast,
+} from '../../components/ui';
 import { cn } from '../../lib/utils';
 
 export function EmployeesPage() {
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ['employees'],
     queryFn: () => employeeApi.list(),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => employeeApi.remove(id),
+    onSuccess: () => {
+      toast.success('AI employee deleted');
+      qc.invalidateQueries({ queryKey: ['employees'] });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   return (
@@ -58,7 +78,19 @@ export function EmployeesPage() {
                       <PhoneOutgoing className="h-5 w-5" />
                     )}
                   </div>
-                  <Badge>{e.status}</Badge>
+                  <span className="flex items-center gap-1.5">
+                    <Badge>{e.status}</Badge>
+                    <span onClick={(ev) => ev.preventDefault()}>
+                      <ConfirmButton
+                        onConfirm={() => remove.mutate(e.id)}
+                        title="Delete this AI employee?"
+                        message={`${e.name} will be removed permanently, along with its knowledge base and responsibilities.`}
+                        className="rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </ConfirmButton>
+                    </span>
+                  </span>
                 </div>
                 <h3 className="text-lg font-semibold text-slate-900">{e.name}</h3>
                 <p className="text-sm text-slate-500">

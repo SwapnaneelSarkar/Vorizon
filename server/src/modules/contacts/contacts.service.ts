@@ -45,6 +45,7 @@ export async function createContact(
     company: input.company || '',
     tags: input.tags ?? [],
     notes: input.notes || '',
+    campaignId: input.campaignId || null,
     validationStatus: (e164 ? 'valid' : 'invalid') as ValidationStatus,
   })) as ContactRecord;
   return toDTO(contact);
@@ -75,6 +76,7 @@ function pick(row: Record<string, string>, keys: string[]): string {
 export async function importContacts(
   orgId: string,
   file: { buffer: Buffer; mimetype: string; originalname: string },
+  campaignId?: string,
 ): Promise<ContactImportResult> {
   const rows = rowsFromBuffer(file.buffer, file.mimetype, file.originalname);
   const invalid: ContactImportResult['invalid'] = [];
@@ -106,6 +108,7 @@ export async function importContacts(
       company,
       tags: tags ? tags.split(/[;,]/).map((t) => t.trim()).filter(Boolean) : [],
       notes,
+      campaignId: campaignId || null,
       validationStatus: 'valid',
     });
   });

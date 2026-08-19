@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   changePasswordSchema,
   forgotPasswordSchema,
+  googleAuthSchema,
   loginSchema,
   refreshSchema,
   registerSchema,
@@ -25,6 +26,7 @@ const authLimiter = makeRateLimiter({
 
 authRoutes.post('/register', authLimiter, validate(registerSchema), asyncHandler(ctrl.registerHandler));
 authRoutes.post('/login', authLimiter, validate(loginSchema), asyncHandler(ctrl.loginHandler));
+authRoutes.post('/google', authLimiter, validate(googleAuthSchema), asyncHandler(ctrl.googleHandler));
 authRoutes.post('/refresh', validate(refreshSchema), asyncHandler(ctrl.refreshHandler));
 authRoutes.post(
   '/forgot-password',

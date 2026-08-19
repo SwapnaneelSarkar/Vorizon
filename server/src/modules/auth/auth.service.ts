@@ -4,6 +4,7 @@ import type { AuthResponse, LoginInput, RegisterInput, UserDTO } from '@vorizon/
 import { Organization } from '../../models/Organization.js';
 import { User, type UserDoc } from '../../models/User.js';
 import { ApiError } from '../../utils/apiError.js';
+import { getAuthAdmin } from '../../config/firebase.js';
 import { sendPasswordResetEmail, sendWelcomeEmail } from '../email/email.service.js';
 import {
   signAccessToken,
@@ -63,9 +64,57 @@ export async function register(input: RegisterInput): Promise<AuthResponse> {
 
 export async function login(input: LoginInput): Promise<AuthResponse> {
   const user = await User.findOne({ email: input.email.toLowerCase() });
-  if (!user) throw ApiError.unauthorized('Invalid credentials');
+  if (!user?.passwordHash) throw ApiError.unauthorized('Invalid credentials');
   const ok = await bcrypt.compare(input.password, user.passwordHash);
   if (!ok) throw ApiError.unauthorized('Invalid credentials');
+
+  const tokens = await issueTokens(user);
+  return { user: toUserDTO(user), tokens };
+}
+
+/**
+ * "Sign in with Google": verifies a Firebase Auth ID token (the client signs
+ * in via Firebase's Google provider and hands us the resulting ID token), then
+ * signs in an existing user, links Google to an existing password account with
+ * the same verified email, or creates a brand-new org + owner for a first-time
+ * user — mirroring register()'s org-bootstrap for the "new user" case.
+ */
+export async function loginWithGoogle(idToken: string): Promise<AuthResponse> {
+  const authAdmin = getAuthAdmin();
+  if (!authAdmin) throw ApiError.badRequest('Google sign-in is not configured on this server');
+
+  let decoded;
+  try {
+    decoded = await authAdmin.verifyIdToken(idToken);
+  } catch {
+    throw ApiError.unauthorized('Invalid or expired Google sign-in');
+  }
+  const email = decoded.email?.toLowerCase();
+  if (!email || !decoded.email_verified) {
+    throw ApiError.unauthorized('Google account has no verified email');
+  }
+
+  let user = await User.findOne({ email });
+  if (user) {
+    // Email verified by Google — safe to link onto an existing password
+    // account the first time it signs in with Google.
+    if (user.googleId !== decoded.uid) {
+      user.googleId = decoded.uid;
+      await user.save();
+    }
+  } else {
+    const name = decoded.name || email.split('@')[0];
+    const org = await Organization.create({ name: `${name}'s Organization` });
+    user = await User.create({
+      name,
+      email,
+      googleId: decoded.uid,
+      organizationId: org._id,
+      role: 'owner',
+    });
+    await Organization.updateOne({ _id: org._id }, { createdBy: user._id });
+    await sendWelcomeEmail(user.email, user.name);
+  }
 
   const tokens = await issueTokens(user);
   return { user: toUserDTO(user), tokens };
@@ -132,6 +181,9 @@ export async function changePassword(
 ) {
   const user = await User.findById(userId);
   if (!user) throw ApiError.notFound('User not found');
+  if (!user.passwordHash) {
+    throw ApiError.badRequest('This account signs in with Google and has no password to change');
+  }
   const ok = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!ok) throw ApiError.unauthorized('Current password is incorrect');
   user.passwordHash = await bcrypt.hash(newPassword, 10);

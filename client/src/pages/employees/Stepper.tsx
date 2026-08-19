@@ -17,7 +17,7 @@ export function Stepper({
           key={title}
           onClick={() => onSelect(i)}
           className={cn(
-            'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition',
+            'flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition',
             i === active
               ? 'bg-white text-brand-blue shadow-card ring-1 ring-slate-200'
               : 'text-slate-500 hover:bg-white/70 hover:text-slate-700',

@@ -32,6 +32,7 @@ const unwrap = <T>(p: Promise<{ data: { data: T } }>) => p.then((r) => r.data.da
 export const authApi = {
   register: (input: RegisterInput) => unwrap<AuthResponse>(api.post('/auth/register', input)),
   login: (input: LoginInput) => unwrap<AuthResponse>(api.post('/auth/login', input)),
+  google: (idToken: string) => unwrap<AuthResponse>(api.post('/auth/google', { idToken })),
   me: () => unwrap<{ user: AuthResponse['user']; organization: unknown }>(api.get('/auth/me')),
   logout: () => api.post('/auth/logout'),
   changePassword: (currentPassword: string, newPassword: string) =>
@@ -111,12 +112,13 @@ export const interviewApi = {
 
 // ---- contacts ----
 export const contactApi = {
-  list: (params?: { validationStatus?: string }) =>
+  list: (params?: { validationStatus?: string; campaignId?: string }) =>
     unwrap<{ items: ContactDTO[]; total: number }>(api.get('/contacts', { params })),
   create: (input: CreateContactInput) => unwrap<ContactDTO>(api.post('/contacts', input)),
-  upload: (file: File) => {
+  upload: (file: File, campaignId?: string) => {
     const form = new FormData();
     form.append('file', file);
+    if (campaignId) form.append('campaignId', campaignId);
     return unwrap<ContactImportResult>(api.post('/contacts/upload', form));
   },
   remove: (id: string) => api.delete(`/contacts/${id}`),
@@ -130,6 +132,7 @@ export const campaignApi = {
   launch: (id: string) => unwrap<CampaignDTO>(api.post(`/campaigns/${id}/launch`)),
   pause: (id: string) => unwrap<CampaignDTO>(api.post(`/campaigns/${id}/pause`)),
   resume: (id: string) => unwrap<CampaignDTO>(api.post(`/campaigns/${id}/resume`)),
+  remove: (id: string) => api.delete(`/campaigns/${id}`),
 };
 
 // ---- billing & analytics ----

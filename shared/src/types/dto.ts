@@ -63,6 +63,10 @@ export interface AIEmployeeDTO {
   activatedAt?: string;
   knowledgeCount?: number;
   responsibilityCount?: number;
+  /** Set once an inbound employee is bound to a real voice provider's assistant/agent at activation. */
+  assistantExternalId?: string;
+  /** The voice provider this employee was activated against ('mock' before real telephony is connected). */
+  voiceProvider?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { cert, getApps, initializeApp, applicationDefault, type App } from 'firebase-admin/app';
 import { getFirestore as adminFirestore, type Firestore } from 'firebase-admin/firestore';
+import { getAuth as adminAuth, type Auth } from 'firebase-admin/auth';
 import { env } from './env.js';
 import { logger } from '../utils/logger.js';
 
@@ -21,6 +22,7 @@ export const isFirebaseEnabled = Boolean(
 
 let app: App | null = null;
 let db: Firestore | null = null;
+let authAdmin: Auth | null = null;
 
 function credentials() {
   const sa = env.FIREBASE_SERVICE_ACCOUNT;
@@ -39,25 +41,43 @@ function credentials() {
   }
 }
 
+function ensureApp(): App {
+  return (app ??=
+    getApps()[0] ??
+    initializeApp({
+      credential: credentials(),
+      ...(env.FIREBASE_PROJECT_ID ? { projectId: env.FIREBASE_PROJECT_ID } : {}),
+    }));
+}
+
 /** Shared Firestore handle. Null when Firebase is off. */
 export function getDb(): Firestore | null {
   if (!isFirebaseEnabled) return null;
   if (!db) {
-    app =
-      getApps()[0] ??
-      initializeApp({
-        credential: credentials(),
-        ...(env.FIREBASE_PROJECT_ID ? { projectId: env.FIREBASE_PROJECT_ID } : {}),
-      });
-    db = adminFirestore(app);
+    db = adminFirestore(ensureApp());
     db.settings({ ignoreUndefinedProperties: true });
     logger.info('Firestore connected');
   }
   return db;
 }
 
+/**
+ * Firebase Auth admin handle, used to verify ID tokens from "Sign in with
+ * Google" on the client. Null when Firebase is off (no service account to
+ * verify tokens against) — callers should surface this as "not configured"
+ * rather than crash.
+ */
+export function getAuthAdmin(): Auth | null {
+  if (!isFirebaseEnabled) return null;
+  if (!authAdmin) {
+    authAdmin = adminAuth(ensureApp());
+  }
+  return authAdmin;
+}
+
 export async function closeFirebase(): Promise<void> {
   await db?.terminate().catch(() => undefined);
   db = null;
+  authAdmin = null;
   app = null;
 }

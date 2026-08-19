@@ -8,5 +8,8 @@ export const createContactSchema = z.object({
   company: z.string().optional(),
   tags: z.array(z.string()).default([]),
   notes: z.string().optional(),
+  // Set when adding contacts directly from a campaign's setup flow, so they're
+  // scoped to that campaign instead of landing in the unassigned pool.
+  campaignId: z.string().optional(),
 });
 export type CreateContactInput = z.infer<typeof createContactSchema>;

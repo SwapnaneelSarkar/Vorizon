@@ -16,7 +16,8 @@ contactRoutes.post(
   upload.single('file'),
   asyncHandler(async (req, res) => {
     if (!req.file) throw ApiError.badRequest('No file uploaded');
-    const result = await svc.importContacts(req.user!.organizationId, req.file);
+    const campaignId = typeof req.body.campaignId === 'string' ? req.body.campaignId : undefined;
+    const result = await svc.importContacts(req.user!.organizationId, req.file, campaignId);
     res.status(201).json({ data: result });
   }),
 );

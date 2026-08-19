@@ -4,6 +4,7 @@ import { authApi } from '../lib/api/endpoints';
 import { apiErrorMessage } from '../lib/api/client';
 import { useAuthStore } from '../store/authStore';
 import { AuthShell } from '../components/AuthShell';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { Button, Card, Field, Input } from '../components/ui';
 
 export function RegisterPage() {
@@ -37,6 +38,18 @@ export function RegisterPage() {
         <div className="mb-7">
           <h1 className="text-xl font-bold text-slate-900">Create your account</h1>
           <p className="mt-1 text-sm text-slate-500">Start building AI employees in minutes</p>
+        </div>
+        <GoogleSignInButton
+          onSuccess={(res) => {
+            setAuth(res.user, res.tokens);
+            navigate('/');
+          }}
+          onError={setError}
+        />
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs font-medium text-slate-400">or</span>
+          <div className="h-px flex-1 bg-slate-200" />
         </div>
         <form onSubmit={submit}>
           <Field label="Business name">

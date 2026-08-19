@@ -41,6 +41,11 @@ describe('auth', () => {
   it('rejects unauthenticated access', async () => {
     await request(app).get('/api/ai-employees').expect(401);
   });
+
+  it('google sign-in reports "not configured" when Firebase is off (real, unmocked path)', async () => {
+    const res = await request(app).post('/api/auth/google').send({ idToken: 'whatever-fake-token' }).expect(400);
+    expect(res.body.error.message).toMatch(/not configured/i);
+  });
 });
 
 describe('inbound employee lifecycle', () => {

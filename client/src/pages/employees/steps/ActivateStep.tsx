@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Rocket, AlertCircle, PhoneCall } from 'lucide-react';
+import { Rocket, AlertCircle, PhoneCall, PhoneIncoming, FlaskConical } from 'lucide-react';
 import type { AIEmployeeDTO } from '@vorizon/shared';
 import { employeeApi } from '../../../lib/api/endpoints';
 import { apiErrorDetails, apiErrorMessage } from '../../../lib/api/client';
@@ -32,6 +32,7 @@ export function ActivateStep({ employee, onSaved }: { employee: AIEmployeeDTO; o
   });
 
   const isActive = employee.status === 'active';
+  const isRealVoice = Boolean(employee.voiceProvider && employee.voiceProvider !== 'mock');
 
   return (
     <Card>
@@ -64,6 +65,33 @@ export function ActivateStep({ employee, onSaved }: { employee: AIEmployeeDTO; o
             ✓ {employee.name} is active
             {employee.businessPhoneNumber ? ` on ${employee.businessPhoneNumber}` : ''}.
           </div>
+          {employee.type === 'inbound' && (
+            <div
+              className={
+                isRealVoice
+                  ? 'flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 p-3.5 text-sm text-blue-700'
+                  : 'flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-700'
+              }
+            >
+              {isRealVoice ? (
+                <>
+                  <PhoneIncoming className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    Connected to <strong className="capitalize">{employee.voiceProvider}</strong> — this
+                    number will actually ring and route to your AI employee.
+                  </span>
+                </>
+              ) : (
+                <>
+                  <FlaskConical className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    No voice provider is connected yet, so this number won’t receive real calls. Use
+                    “Simulate an inbound call” below to test the flow.
+                  </span>
+                </>
+              )}
+            </div>
+          )}
           {employee.type === 'inbound' && (
             <div>
               <Button variant="secondary" onClick={() => simulate.mutate()} disabled={simulate.isPending}>

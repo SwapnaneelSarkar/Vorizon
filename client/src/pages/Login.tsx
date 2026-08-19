@@ -4,6 +4,7 @@ import { authApi } from '../lib/api/endpoints';
 import { apiErrorMessage } from '../lib/api/client';
 import { useAuthStore } from '../store/authStore';
 import { AuthShell } from '../components/AuthShell';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { Button, Card, Field, Input } from '../components/ui';
 
 function ForgotPassword({ onBack }: { onBack: () => void }) {
@@ -161,6 +162,18 @@ export function LoginPage() {
           <ForgotPassword onBack={() => setForgot(false)} />
         ) : (
           <>
+            <GoogleSignInButton
+              onSuccess={(res) => {
+                setAuth(res.user, res.tokens);
+                navigate('/');
+              }}
+              onError={setError}
+            />
+            <div className="my-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span className="text-xs font-medium text-slate-400">or</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
             <form onSubmit={submit}>
               <Field label="Email">
                 <Input

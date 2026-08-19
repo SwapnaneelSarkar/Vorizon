@@ -12,6 +12,8 @@ import { Contact } from '../../models/Contact.js';
 import { Campaign } from '../../models/Campaign.js';
 import { ApiError } from '../../utils/apiError.js';
 import { toE164 } from '../../utils/phone.js';
+import { logger } from '../../utils/logger.js';
+import { getVoiceEngine } from '../../voice/index.js';
 import {
   canActivate,
   deriveStatus,
@@ -47,6 +49,8 @@ export function toEmployeeDTO(
     rules: e.rules ?? [],
     tested: e.tested,
     activatedAt: e.activatedAt ? e.activatedAt.toISOString() : undefined,
+    assistantExternalId: e.assistantExternalId ?? undefined,
+    voiceProvider: e.voiceProvider ?? undefined,
     knowledgeCount: counts?.knowledgeCount,
     responsibilityCount: counts?.responsibilityCount,
     createdAt: (e as unknown as { createdAt: Date }).createdAt.toISOString(),
@@ -160,6 +164,17 @@ export async function updateEmployee(
 
 export async function deleteEmployee(orgId: string, id: string): Promise<void> {
   const employee = await loadEmployee(orgId, id);
+
+  const activeCampaign = await Campaign.findOne({
+    aiEmployeeId: employee._id,
+    status: { $in: ['draft', 'running', 'paused'] },
+  });
+  if (activeCampaign) {
+    throw ApiError.conflict(
+      'This AI employee has an active or draft campaign. Delete or complete that campaign first.',
+    );
+  }
+
   await Promise.all([
     KnowledgeItem.deleteMany({ aiEmployeeId: employee._id }),
     Responsibility.deleteMany({ aiEmployeeId: employee._id }),
@@ -176,6 +191,11 @@ export async function setPhoneConfig(
   const employee = await loadEmployee(orgId, id);
   if (employee.type !== 'inbound') {
     throw ApiError.badRequest('Phone configuration only applies to inbound employees');
+  }
+  if (employee.voiceProvider && employee.voiceProvider !== 'mock') {
+    throw ApiError.badRequest(
+      `This number is managed by ${employee.voiceProvider} — it was assigned when the employee went live and can’t be edited here.`,
+    );
   }
   const businessE164 = toE164(businessPhoneNumber);
   const escalationE164 = toE164(escalationNumber);
@@ -221,6 +241,40 @@ export async function markTested(orgId: string, id: string): Promise<AIEmployeeD
   return toEmployeeDTO(employee);
 }
 
+/**
+ * Bind an inbound employee to the active voice provider's assistant/agent and
+ * real inbound number, and persist the result. No-op on the mock engine —
+ * there's no real telephony to bind to. Throws with the engine's own message
+ * on failure (e.g. no phone number available in the provider account) so
+ * activation clearly fails rather than silently going "live" unconnected.
+ */
+async function provisionInbound(employee: EmployeeRecord): Promise<void> {
+  const engine = getVoiceEngine();
+  if (engine.provider === 'mock') return;
+
+  const employeeId = String(employee._id);
+  let assistantId: string;
+  let phoneNumber: string;
+  try {
+    [{ assistantId }, { phoneNumber }] = await Promise.all([
+      engine.syncAssistant(employeeId),
+      engine.provisionInboundNumber(employeeId),
+    ]);
+  } catch (err) {
+    logger.error({ err, employeeId, provider: engine.provider }, 'Inbound provisioning failed');
+    throw ApiError.badRequest(
+      `Could not connect this employee to ${engine.provider}: ${(err as Error).message}`,
+    );
+  }
+
+  employee.assistantExternalId = assistantId;
+  employee.voiceProvider = engine.provider;
+  // The number typed in the wizard was a placeholder until now — replace it
+  // with the number the provider will actually ring.
+  employee.businessPhoneNumber = phoneNumber;
+  logger.info({ employeeId, provider: engine.provider, phoneNumber }, 'Inbound employee provisioned');
+}
+
 export async function activateEmployee(orgId: string, id: string): Promise<AIEmployeeDTO> {
   const employee = await loadEmployee(orgId, id);
   const snapshot = await buildSnapshot(employee);
@@ -229,6 +283,9 @@ export async function activateEmployee(orgId: string, id: string): Promise<AIEmp
       'Cannot activate: prerequisites not met',
       missingForActivation(snapshot),
     );
+  }
+  if (employee.type === 'inbound') {
+    await provisionInbound(employee);
   }
   employee.activatedAt = new Date();
   employee.status = 'active';

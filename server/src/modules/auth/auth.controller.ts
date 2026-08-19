@@ -11,6 +11,11 @@ export async function loginHandler(req: Request, res: Response) {
   res.json({ data: result });
 }
 
+export async function googleHandler(req: Request, res: Response) {
+  const result = await authService.loginWithGoogle(req.body.idToken);
+  res.json({ data: result });
+}
+
 export async function refreshHandler(req: Request, res: Response) {
   const result = await authService.refresh(req.body.refreshToken);
   res.json({ data: result });

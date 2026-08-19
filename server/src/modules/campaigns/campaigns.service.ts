@@ -146,3 +146,14 @@ export async function resumeCampaign(orgId: string, id: string): Promise<Campaig
   await campaign.save();
   return toDTO(campaign);
 }
+
+export async function deleteCampaign(orgId: string, id: string): Promise<void> {
+  const campaign = await loadCampaign(orgId, id);
+  if (campaign.status === 'running') {
+    throw ApiError.conflict('Pause this campaign before deleting it');
+  }
+  // Release its contacts back to the unassigned pool rather than leaving them
+  // pointed at a campaign that no longer exists.
+  await Contact.updateMany({ campaignId: campaign._id }, { campaignId: null });
+  await Campaign.deleteOne({ _id: campaign._id });
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import type { AIEmployeeDTO } from '@vorizon/shared';
 import { employeeApi } from '../../lib/api/endpoints';
 import { apiErrorMessage } from '../../lib/api/client';
@@ -12,7 +13,6 @@ import { ResponsibilitiesStep } from './steps/ResponsibilitiesStep';
 import { PhoneStep } from './steps/PhoneStep';
 import { BillingStep } from './steps/BillingStep';
 import { InterviewStep } from './steps/InterviewStep';
-import { ContactsStep } from './steps/ContactsStep';
 import { CampaignStep } from './steps/CampaignStep';
 import { ActivateStep } from './steps/ActivateStep';
 import { Stepper } from './Stepper';
@@ -164,8 +164,7 @@ function stepsFor(type: 'inbound' | 'outbound'): StepDef[] {
     responsibilities,
     billing,
     interview,
-    { key: 'contacts', title: 'Contact List', render: (e) => <ContactsStep employee={e} /> },
-    { key: 'campaign', title: 'Campaign', render: (e, r) => <CampaignStep employee={e} onSaved={r} /> },
+    { key: 'campaign', title: 'Campaign', render: (e) => <CampaignStep employee={e} /> },
     { key: 'activate', title: 'Launch', render: (e, r) => <ActivateStep employee={e} onSaved={r} /> },
   ];
 }
@@ -196,7 +195,26 @@ function EmployeeSetup({ employeeId }: { employeeId: string }) {
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
         <Stepper steps={steps.map((s) => s.title)} active={active} onSelect={setActive} />
-        <div>{steps[active].render(employee, refresh)}</div>
+        <div>
+          {steps[active].render(employee, refresh)}
+          <div className="mt-4 flex items-center justify-between">
+            {active > 0 ? (
+              <button
+                onClick={() => setActive((a) => a - 1)}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700"
+              >
+                <ArrowLeft className="h-4 w-4" /> Back
+              </button>
+            ) : (
+              <span />
+            )}
+            {active < steps.length - 1 && (
+              <Button onClick={() => setActive((a) => a + 1)}>
+                Continue to {steps[active + 1].title} <ArrowRight className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

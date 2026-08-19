@@ -39,7 +39,9 @@ const protect = (el: JSX.Element) => <ProtectedRoute>{el}</ProtectedRoute>;
 
 /** Root: the marketing landing page for visitors, the app dashboard for signed-in users. */
 function RootRoute() {
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
   const token = useAuthStore((s) => s.accessToken);
+  if (!hasHydrated) return <Spinner />;
   return token ? <ProtectedRoute><DashboardPage /></ProtectedRoute> : <LandingPage />;
 }
 

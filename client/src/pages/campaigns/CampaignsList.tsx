@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { PhoneOutgoing, Play, Plus } from 'lucide-react';
+import { PhoneOutgoing, Play, Plus, Trash2 } from 'lucide-react';
 import { campaignApi } from '../../lib/api/endpoints';
 import { apiErrorMessage } from '../../lib/api/client';
 import {
   Badge,
   Button,
   Card,
+  ConfirmButton,
   EmptyState,
   PageHeader,
   Spinner,
@@ -38,6 +39,15 @@ export function CampaignsPage() {
       toast.success('Campaign launched — calls are on their way');
       qc.invalidateQueries({ queryKey: ['campaigns'] });
       qc.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => campaignApi.remove(id),
+    onSuccess: () => {
+      toast.success('Campaign deleted');
+      qc.invalidateQueries({ queryKey: ['campaigns'] });
     },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
@@ -80,7 +90,21 @@ export function CampaignsPage() {
               <Card key={c.id} className="flex flex-col">
                 <div className="mb-4 flex items-start justify-between gap-2">
                   <h3 className="font-semibold leading-snug text-slate-900">{c.name}</h3>
-                  <Badge>{c.status}</Badge>
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    <Badge>{c.status}</Badge>
+                    <ConfirmButton
+                      onConfirm={() => remove.mutate(c.id)}
+                      title="Delete this campaign?"
+                      message={
+                        c.status === 'running'
+                          ? 'This campaign is still running — pause it first, then delete.'
+                          : `${c.name} will be removed permanently. Its contacts stay, unassigned.`
+                      }
+                      className="rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </ConfirmButton>
+                  </span>
                 </div>
 
                 <div className="mb-3 grid grid-cols-3 gap-2">

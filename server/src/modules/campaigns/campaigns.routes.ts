@@ -57,3 +57,11 @@ campaignRoutes.post(
     res.json({ data: dto });
   }),
 );
+
+campaignRoutes.delete(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    await svc.deleteCampaign(req.user!.organizationId, req.params.id);
+    res.status(204).send();
+  }),
+);
