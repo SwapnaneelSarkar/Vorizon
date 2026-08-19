@@ -28,7 +28,7 @@ const envSchema = z
     // Alternative interview LLM when no Anthropic key is set.
     OPENAI_API_KEY: z.string().optional().default(''),
     OPENAI_MODEL: z.string().default('gpt-4o-mini'),
-    RATE_USD_PER_MINUTE: z.coerce.number().default(0.1),
+    RATE_USD_PER_MINUTE: z.coerce.number().default(0.08),
     // INR→USD rate for crediting Razorpay (INR) payments into the USD wallet.
     USD_INR_RATE: z.coerce.number().default(83),
     // Public base URL of the web app (used in email links).

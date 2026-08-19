@@ -17,8 +17,8 @@ const features = [
   },
   {
     icon: BarChart3,
-    title: 'Google Ads & Transparent Billing',
-    text: 'Standard $30/mo platform for Google Ads sync, with voice calls at $0.10/min.',
+    title: 'Free integrations, transparent billing',
+    text: 'Connect Google Ads, Meta Ads, WhatsApp & your CRM at no cost — voice calls billed at $0.08/min.',
   },
 ];
 

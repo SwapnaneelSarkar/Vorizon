@@ -98,7 +98,7 @@ describe('inbound employee lifecycle', () => {
     const usage = await auth(request(app).get('/api/billing/usage')).expect(200);
     expect(usage.body.data.totalCalls).toBe(1);
     expect(usage.body.data.totalMinutes).toBe(3); // ceil(125/60)=3
-    expect(usage.body.data.totalUsd).toBeCloseTo(0.3, 5);
+    expect(usage.body.data.totalUsd).toBeCloseTo(0.24, 5); // 3 min * $0.08/min
   });
 });
 

@@ -242,12 +242,12 @@ function PlanOverviewCard() {
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-brand-blue to-brand-purple px-3 py-0.5 text-xs font-bold uppercase tracking-wider text-white shadow-sm">
               <Sparkles className="h-3 w-3" /> Active Plan
             </span>
-            <span className="text-xs font-medium text-slate-300">Standard Subscription</span>
+            <span className="text-xs font-medium text-slate-300">Pay As You Go</span>
           </div>
-          <h2 className="text-2xl font-bold text-white">Standard Platform Plan ($30 / month)</h2>
+          <h2 className="text-2xl font-bold text-white">All integrations included — free</h2>
           <p className="max-w-xl text-sm leading-relaxed text-slate-300">
-            Standard access for connecting Google Ads, Meta Ads, and CRM integrations. AI voice
-            conversations are billed from your prepaid wallet at $0.10/min.
+            Connect Google Ads, Meta Ads, WhatsApp and your CRM at no extra cost. AI voice
+            conversations are billed from your prepaid wallet at $0.08/min — that’s it.
           </p>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1 text-xs text-slate-300">
             <span className="inline-flex items-center gap-1.5">
@@ -287,7 +287,7 @@ export function BillingPage() {
     <div>
       <PageHeader
         title="Billing"
-        description={`Standard $30/mo plan · Calls billed at ${formatUsd(usage.rateUsd)} per conversation minute`}
+        description={`All integrations free · Calls billed at ${formatUsd(usage.rateUsd)} per conversation minute`}
       />
 
       <PlanOverviewCard />

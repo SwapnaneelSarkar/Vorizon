@@ -275,7 +275,7 @@ export function TermsPage() {
         <p>Vorizon may charge customers based on usage, including call duration.</p>
         <p>
           Under the current pricing model, calling may be charged at approximately{' '}
-          <strong>USD $0.10 per minute</strong>, unless another price is displayed in the customer
+          <strong>USD $0.08 per minute</strong>, unless another price is displayed in the customer
           dashboard, pricing page, order, contract, promotional offer, or other applicable
           commercial agreement.
         </p>

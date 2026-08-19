@@ -26,7 +26,7 @@ export function BillingStep({ employee, onSaved }: { employee: AIEmployeeDTO; on
     <Card>
       <h2 className="mb-1 text-lg font-semibold text-slate-800">Billing Information</h2>
       <p className="mb-4 text-sm text-slate-500">
-        Usage-based billing at <strong>$0.10 per conversation minute</strong>. No charge in this
+        Usage-based billing at <strong>$0.08 per conversation minute</strong>. No charge in this
         demo — a payment method is stored as a placeholder.
       </p>
       <div className="grid grid-cols-3 gap-3">
