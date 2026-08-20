@@ -121,18 +121,33 @@ export async function markPaid(
   razorpayPaymentId: string,
   verifiedVia: 'checkout' | 'webhook',
 ): Promise<PaymentDTO> {
-  const payment = (await Payment.findOne({ razorpayOrderId })) as PaymentRecord | null;
-  if (!payment) throw ApiError.notFound('Payment order not found');
+  // Atomically claim the paid transition. Razorpay confirms via TWO near-
+  // simultaneous paths (browser Checkout callback + payment.captured webhook),
+  // possibly on two Cloud Function instances. A non-atomic findOne→check→save
+  // lets both pass the guard and credit the wallet twice. This conditional
+  // update transitions created→paid exactly once; only the winner is non-null.
+  const payment = (await Payment.findOneAndUpdate(
+    { razorpayOrderId, status: { $ne: 'paid' } },
+    {
+      $set: {
+        status: 'paid',
+        razorpayPaymentId,
+        verifiedVia,
+        failureReason: '',
+        paidAt: new Date(),
+      },
+    },
+    { new: true },
+  )) as PaymentRecord | null;
 
-  // Idempotent: webhook + checkout callback can both confirm the same payment.
-  if (payment.status === 'paid') return toDTO(payment);
-
-  payment.status = 'paid';
-  payment.razorpayPaymentId = razorpayPaymentId;
-  payment.verifiedVia = verifiedVia;
-  payment.failureReason = '';
-  payment.paidAt = new Date();
-  await (payment as unknown as { save(): Promise<unknown> }).save();
+  if (!payment) {
+    // Either the order doesn't exist, or it was already paid (a concurrent/
+    // redelivered confirmation). Distinguish the two; the already-paid case is
+    // the idempotent no-op — return it without crediting again.
+    const already = (await Payment.findOne({ razorpayOrderId })) as PaymentRecord | null;
+    if (!already) throw ApiError.notFound('Payment order not found');
+    return toDTO(already);
+  }
 
   const orgId = String(payment.organizationId);
   // Credit the prepaid wallet with the USD equivalent of the INR payment.

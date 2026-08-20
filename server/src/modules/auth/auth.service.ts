@@ -1,9 +1,10 @@
-import { randomInt } from 'node:crypto';
+import { createHash, randomInt } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import type { AuthResponse, LoginInput, RegisterInput, UserDTO } from '@vorizon/shared';
 import { Organization } from '../../models/Organization.js';
 import { User, type UserDoc } from '../../models/User.js';
 import { ApiError } from '../../utils/apiError.js';
+import { logger } from '../../utils/logger.js';
 import { getAuthAdmin } from '../../config/firebase.js';
 import { sendPasswordResetEmail, sendWelcomeEmail } from '../email/email.service.js';
 import {
@@ -13,8 +14,21 @@ import {
 } from './tokens.js';
 
 const RESET_OTP_TTL_MS = 15 * 60 * 1000;
+/** Most recent concurrent sessions (devices/browsers) kept per user. */
+const MAX_SESSIONS = 10;
+/** Wrong reset-OTP guesses before the code is burned. */
+const MAX_RESET_ATTEMPTS = 5;
 
 type UserRecord = UserDoc & { _id: unknown };
+
+/**
+ * Fingerprint a refresh token for storage. SHA-256 (not bcrypt): a refresh JWT
+ * is already high-entropy, and bcrypt silently truncates its input at 72 bytes —
+ * a JWT's first 72 bytes are just the header + "{\"userId\":\"…", so the unique
+ * jti lands beyond the cutoff and every one of a user's tokens would hash-match
+ * every stored session. SHA-256 covers the whole token, so sessions stay distinct.
+ */
+const fingerprintToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
 function toUserDTO(user: UserRecord): UserDTO {
   return {
@@ -26,6 +40,12 @@ function toUserDTO(user: UserRecord): UserDTO {
   };
 }
 
+/**
+ * Start a new session: issue an access + refresh token and append the refresh
+ * hash to the user's session list (capped to the last MAX_SESSIONS). Each login
+ * on a new device/tab is its own session, so signing in elsewhere no longer
+ * logs the first device out.
+ */
 async function issueTokens(user: UserRecord) {
   const accessToken = signAccessToken({
     userId: String(user._id),
@@ -35,7 +55,7 @@ async function issueTokens(user: UserRecord) {
   const refreshToken = signRefreshToken({ userId: String(user._id) });
   await User.updateOne(
     { _id: user._id },
-    { refreshTokenHash: await bcrypt.hash(refreshToken, 10) },
+    { $push: { refreshTokenHashes: { $each: [fingerprintToken(refreshToken)], $slice: -MAX_SESSIONS } } },
   );
   return { accessToken, refreshToken };
 }
@@ -128,16 +148,32 @@ export async function refresh(refreshToken: string) {
     throw ApiError.unauthorized('Invalid refresh token');
   }
   const user = await User.findById(payload.userId);
-  if (!user || !user.refreshTokenHash) throw ApiError.unauthorized('Invalid refresh token');
-  const match = await bcrypt.compare(refreshToken, user.refreshTokenHash);
-  if (!match) throw ApiError.unauthorized('Invalid refresh token');
+  // Plain string array (not the Mongoose DocumentArray) so the $set below
+  // persists reliably.
+  const hashes: string[] = [...((user?.refreshTokenHashes ?? []) as string[])];
+  if (!user || hashes.length === 0) throw ApiError.unauthorized('Invalid refresh token');
 
-  const tokens = await issueTokens(user);
-  return { tokens };
+  // Find which session this exact token belongs to (each stored fingerprint is
+  // a distinct login). Exact match — no truncation.
+  const idx = hashes.indexOf(fingerprintToken(refreshToken));
+  if (idx === -1) throw ApiError.unauthorized('Invalid refresh token');
+
+  // Rotate only THIS session's token, leaving other devices' sessions intact.
+  const accessToken = signAccessToken({
+    userId: String(user._id),
+    organizationId: String(user.organizationId),
+    role: user.role,
+  });
+  const newRefresh = signRefreshToken({ userId: String(user._id) });
+  hashes[idx] = fingerprintToken(newRefresh);
+  await User.updateOne({ _id: user._id }, { $set: { refreshTokenHashes: hashes } });
+  return { tokens: { accessToken, refreshToken: newRefresh } };
 }
 
 export async function logout(userId: string) {
-  await User.updateOne({ _id: userId }, { refreshTokenHash: null });
+  // Clears all sessions for the user (the access-token-authenticated logout
+  // route can't identify a single session). Signs the user out everywhere.
+  await User.updateOne({ _id: userId }, { refreshTokenHashes: [] });
 }
 
 /**
@@ -150,8 +186,16 @@ export async function forgotPassword(email: string): Promise<void> {
   const otp = randomInt(0, 1_000_000).toString().padStart(6, '0');
   user.resetOtpHash = await bcrypt.hash(otp, 10);
   user.resetOtpExpiresAt = new Date(Date.now() + RESET_OTP_TTL_MS);
+  user.resetOtpAttempts = 0; // fresh code, fresh attempt budget
   await user.save();
-  await sendPasswordResetEmail(user.email, otp);
+
+  // Surface delivery failure to the operator (the endpoint still returns 204 to
+  // preserve email-enumeration safety, but a silently-dropped reset email would
+  // otherwise be invisible — a user "never gets the code" with no trace).
+  const sent = await sendPasswordResetEmail(user.email, otp);
+  if (!sent) {
+    logger.error({ email: user.email }, 'Password-reset email failed to send');
+  }
 }
 
 export async function resetPassword(
@@ -163,14 +207,28 @@ export async function resetPassword(
   const user = await User.findOne({ email: email.toLowerCase() });
   if (!user?.resetOtpHash || !user.resetOtpExpiresAt) throw invalid();
   if (user.resetOtpExpiresAt.getTime() < Date.now()) throw invalid();
+
   const ok = await bcrypt.compare(otp, user.resetOtpHash);
-  if (!ok) throw invalid();
+  if (!ok) {
+    // Count wrong guesses and burn the code after too many, so a 6-digit OTP
+    // can't be brute-forced within its 15-minute window (IP rate-limiting alone
+    // is defeatable with rotating proxies).
+    user.resetOtpAttempts = (user.resetOtpAttempts ?? 0) + 1;
+    if (user.resetOtpAttempts >= MAX_RESET_ATTEMPTS) {
+      user.resetOtpHash = null;
+      user.resetOtpExpiresAt = null;
+      user.resetOtpAttempts = 0;
+    }
+    await user.save();
+    throw invalid();
+  }
 
   user.passwordHash = await bcrypt.hash(newPassword, 10);
-  // OTP is single-use; also invalidate existing sessions.
+  // OTP is single-use; also invalidate every existing session.
   user.resetOtpHash = null;
   user.resetOtpExpiresAt = null;
-  user.refreshTokenHash = null;
+  user.resetOtpAttempts = 0;
+  user.refreshTokenHashes = [];
   await user.save();
 }
 
@@ -187,8 +245,8 @@ export async function changePassword(
   const ok = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!ok) throw ApiError.unauthorized('Current password is incorrect');
   user.passwordHash = await bcrypt.hash(newPassword, 10);
-  // Invalidate other sessions by clearing the stored refresh token.
-  user.refreshTokenHash = null;
+  // Invalidate every session by clearing the stored refresh tokens.
+  user.refreshTokenHashes = [];
   await user.save();
 }
 

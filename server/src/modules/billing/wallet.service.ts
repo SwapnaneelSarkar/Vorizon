@@ -72,33 +72,50 @@ export async function debit(orgId: string, amountUsd: number, reason: string, re
     { $inc: { walletBalanceUsd: -amount } },
     { new: true },
   ).select('walletBalanceUsd walletLowNotifiedAt');
-  const balanceAfter = round(org?.walletBalanceUsd ?? -amount);
-  const before = round(balanceAfter + amount);
+  const rawAfter = round(org?.walletBalanceUsd ?? -amount);
+  const before = round(rawAfter + amount);
+
+  // Never let the stored balance go negative. Floor it at zero atomically (only
+  // when currently below zero, so concurrent debits don't fight). The last dial
+  // that overdrew is effectively forgiven; preventing over-dialing in the first
+  // place is the campaign runner's per-call balance gate.
+  let balanceAfter = rawAfter;
+  if (rawAfter < 0) {
+    await Organization.updateOne(
+      { _id: orgId, walletBalanceUsd: { $lt: 0 } },
+      { $set: { walletBalanceUsd: 0 } },
+    );
+    balanceAfter = 0;
+  }
+
   await WalletTransaction.create({ organizationId: orgId, type: 'debit', amountUsd: amount, balanceAfterUsd: balanceAfter, reason, ref });
 
-  // Crossing into low balance (>$0 but <$1): notify once.
-  if (balanceAfter > 0 && balanceAfter < LOW_BALANCE_USD && !org?.walletLowNotifiedAt) {
+  // Crossing into low balance (>$0 but <$1): notify once. Transition detection
+  // uses the true post-debit balance (rawAfter), not the floored display value.
+  if (rawAfter > 0 && rawAfter < LOW_BALANCE_USD && !org?.walletLowNotifiedAt) {
     await Organization.updateOne({ _id: orgId }, { walletLowNotifiedAt: new Date() });
     const email = await ownerEmail(orgId);
     if (email) {
-      void sendNotificationEmail(
+      // Awaited (not fire-and-forget): on Cloud Functions a detached promise is
+      // dropped when the instance freezes. Wrapped so a send failure can't break metering.
+      await sendNotificationEmail(
         email,
         'Your Vorizon balance is running low',
         `Your wallet balance is $${balanceAfter.toFixed(2)}. Top up soon to keep your AI employees running.`,
         { label: 'Add funds', url: `${env.APP_BASE_URL}/billing` },
-      );
+      ).catch((err) => logger.error({ err, orgId }, 'Low-balance email failed'));
     }
   }
   // Crossing to depleted (≤ 0): notify that services are paused.
-  if (before > 0 && balanceAfter <= 0) {
+  if (before > 0 && rawAfter <= 0) {
     const email = await ownerEmail(orgId);
     if (email) {
-      void sendNotificationEmail(
+      await sendNotificationEmail(
         email,
         'Vorizon services paused — balance depleted',
         'Your wallet balance has run out, so AI calling has been paused. Add funds to resume immediately.',
         { label: 'Add funds', url: `${env.APP_BASE_URL}/billing` },
-      );
+      ).catch((err) => logger.error({ err, orgId }, 'Depleted email failed'));
     }
     logger.info({ orgId }, 'Wallet depleted — services paused');
   }

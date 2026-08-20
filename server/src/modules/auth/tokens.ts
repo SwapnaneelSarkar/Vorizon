@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import type { Role } from '@vorizon/shared';
 import { env } from '../../config/env.js';
@@ -15,7 +16,10 @@ export function signAccessToken(payload: AccessPayload): string {
 }
 
 export function signRefreshToken(payload: { userId: string }): string {
-  return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
+  // A random jti makes each issued refresh token unique even for the same user
+  // in the same second, so concurrent sessions (devices/tabs) are genuinely
+  // distinct and rotating one never validates against another.
+  return jwt.sign({ ...payload, jti: randomUUID() }, env.JWT_REFRESH_SECRET, {
     expiresIn: env.REFRESH_TOKEN_TTL,
   } as jwt.SignOptions);
 }

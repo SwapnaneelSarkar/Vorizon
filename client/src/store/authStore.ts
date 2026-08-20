@@ -45,3 +45,16 @@ export const useAuthStore = create<AuthState>()(
 setTimeout(() => {
   if (!useAuthStore.getState().hasHydrated) useAuthStore.setState({ hasHydrated: true });
 }, 50);
+
+// Cross-tab sync: refresh tokens rotate per request, so when one tab refreshes
+// and writes the new token to localStorage, other open tabs still hold the old
+// (now-rotated) token in memory and would fail their next refresh. Re-hydrating
+// from storage on the 'storage' event keeps every tab on the current token, and
+// also mirrors sign-out/sign-in across tabs.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'vorizon-auth') {
+      void useAuthStore.persist.rehydrate();
+    }
+  });
+}

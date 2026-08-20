@@ -26,9 +26,12 @@ const leadSchema = new Schema(
 );
 
 // Dedupe leads redelivered by a platform (unique per org+source+externalId when present).
+// NOTE: MongoDB rejects $ne inside a partialFilterExpression (error 67, CannotCreateIndex),
+// which would make this index silently never build. `$gt: ''` is the supported way to say
+// "only non-empty externalId strings" — blank-externalId leads stay unconstrained.
 leadSchema.index(
   { organizationId: 1, source: 1, externalId: 1 },
-  { unique: true, partialFilterExpression: { externalId: { $type: 'string', $ne: '' } } },
+  { unique: true, partialFilterExpression: { externalId: { $gt: '' } } },
 );
 
 export type LeadDoc = InferSchemaType<typeof leadSchema>;

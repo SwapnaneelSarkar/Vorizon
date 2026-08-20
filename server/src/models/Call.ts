@@ -33,5 +33,15 @@ const callSchema = new Schema(
 
 callSchema.index({ organizationId: 1, createdAt: -1 });
 
+// Idempotency at the storage layer: a provider may deliver the same call-ended
+// webhook more than once (and concurrently). A unique index on externalCallId
+// makes the second insert fail with E11000 instead of creating a duplicate Call
+// that would meter + debit the wallet twice. Partial on $type:'string' so the
+// legacy `default: null` docs are excluded and never collide on the null value.
+callSchema.index(
+  { externalCallId: 1 },
+  { unique: true, partialFilterExpression: { externalCallId: { $type: 'string' } } },
+);
+
 export type CallDoc = InferSchemaType<typeof callSchema>;
 export const Call = mongoose.model('Call', callSchema);

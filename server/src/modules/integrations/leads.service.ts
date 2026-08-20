@@ -41,18 +41,29 @@ export async function ingestLead(
     if (existing) return toDTO(existing as LeadRecord);
   }
 
-  const lead = (await Lead.create({
-    organizationId: orgId,
-    source,
-    externalId: input.externalId ?? '',
-    name: input.name,
-    phone,
-    email: input.email ?? '',
-    company: input.company ?? '',
-    campaignId: input.campaignId ?? null,
-    status: 'new',
-    raw: input.meta ?? {},
-  })) as LeadRecord;
+  let lead: LeadRecord;
+  try {
+    lead = (await Lead.create({
+      organizationId: orgId,
+      source,
+      externalId: input.externalId ?? '',
+      name: input.name,
+      phone,
+      email: input.email ?? '',
+      company: input.company ?? '',
+      campaignId: input.campaignId ?? null,
+      status: 'new',
+      raw: input.meta ?? {},
+    })) as LeadRecord;
+  } catch (err) {
+    // Concurrent redelivery lost the unique-index race (org+source+externalId).
+    // Return the winner instead of failing the webhook.
+    if ((err as { code?: number }).code === 11000 && input.externalId) {
+      const existing = await Lead.findOne({ organizationId: orgId, source, externalId: input.externalId });
+      if (existing) return toDTO(existing as LeadRecord);
+    }
+    throw err;
+  }
 
   // Kick off qualification without blocking the webhook response path.
   void qualifyLead(orgId, String(lead._id)).catch((err) =>

@@ -16,10 +16,15 @@ const userSchema = new Schema(
     googleId: { type: String, unique: true, sparse: true },
     organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
     role: { type: String, enum: ROLES, default: 'member' },
-    refreshTokenHash: { type: String, default: null },
+    // One hashed refresh token per active session (device/browser). Rotated
+    // per-session on refresh so a second device/tab doesn't invalidate the
+    // first. Capped to the most recent MAX_SESSIONS entries on push.
+    refreshTokenHashes: { type: [String], default: [] },
     // Password-reset OTP (hashed) sent via email; single-use with expiry.
     resetOtpHash: { type: String, default: null },
     resetOtpExpiresAt: { type: Date, default: null },
+    // Wrong-guess counter for the reset OTP; the code is burned after too many.
+    resetOtpAttempts: { type: Number, default: 0 },
   },
   { timestamps: true },
 );
