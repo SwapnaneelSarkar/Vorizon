@@ -49,12 +49,17 @@ export class ExotelVoiceEngine implements VoiceEngine {
     const base = (env.API_BASE_URL || env.APP_BASE_URL).replace(/\/$/, '');
     const statusCallback = `${base}/api/voice/exotel/webhook${token}`;
 
-    // Round-tripped back to us on the status webhook to attribute the call.
+    // Round-tripped back to us on the status webhook to attribute the call, and
+    // read by the Exotel Voicebot flow. The disclosure is threaded through so the
+    // flow can announce it at call start (configure the flow to speak
+    // {{disclosure}} when non-empty) — the per-org recording-disclosure toggle
+    // was otherwise silently dropped on the Exotel path.
     const customField = JSON.stringify({
       organizationId: params.organizationId,
       aiEmployeeId: params.aiEmployeeId,
       campaignId: params.campaignId,
       contactId: params.contactId,
+      disclosure: params.disclosure ?? '',
     });
 
     const { sid } = await this.client.connectToFlow({
