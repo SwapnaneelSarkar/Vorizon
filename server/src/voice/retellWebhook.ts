@@ -7,6 +7,7 @@ import { ApiError } from '../utils/apiError.js';
 import { logger } from '../utils/logger.js';
 import { optOutPhone } from '../modules/compliance/compliance.service.js';
 import { handleCallEnded } from './handleCallEvent.js';
+import { resolveInboundTarget } from './inboundRouting.js';
 import type { RetellCall } from './retellClient.js';
 
 /**
@@ -60,12 +61,24 @@ retellWebhookRoutes.post(
     if (!call?.call_id) throw ApiError.badRequest('Malformed webhook payload');
 
     const meta = (call.metadata ?? {}) as Record<string, string | undefined>;
-    const orgId = meta.organizationId;
+    let orgId = meta.organizationId;
+    let aiEmployeeId = meta.aiEmployeeId;
 
     if (event === 'call_ended') {
-      if (!orgId || !meta.aiEmployeeId) {
-        // Not one of ours (e.g. dashboard test call) — acknowledge and move on.
-        logger.warn({ callId: call.call_id }, 'Retell call without Vorizon metadata; ignoring');
+      // Outbound calls we place carry org/employee metadata. A real INBOUND call
+      // (customer dialing the reception number) carries none, so attribute it by
+      // the dialed number instead — otherwise inbound calls would be dropped
+      // (no Call record, no billing).
+      if ((!orgId || !aiEmployeeId) && call.direction === 'inbound') {
+        const target = await resolveInboundTarget(call.to_number);
+        if (target) {
+          orgId = target.organizationId;
+          aiEmployeeId = target.aiEmployeeId;
+        }
+      }
+      if (!orgId || !aiEmployeeId) {
+        // Not one of ours (e.g. dashboard test call, or an unrecognized number).
+        logger.warn({ callId: call.call_id, to: call.to_number }, 'Retell call without Vorizon attribution; ignoring');
         return res.json({ received: true });
       }
       const durationSec =
@@ -79,7 +92,7 @@ retellWebhookRoutes.post(
         status: 'ended',
         direction: call.direction ?? 'outbound',
         organizationId: orgId,
-        aiEmployeeId: meta.aiEmployeeId,
+        aiEmployeeId,
         from: call.from_number ?? '',
         to: call.to_number ?? '',
         contactId: meta.contactId,

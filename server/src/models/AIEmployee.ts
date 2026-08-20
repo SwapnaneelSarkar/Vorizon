@@ -39,6 +39,9 @@ const aiEmployeeSchema = new Schema(
 );
 
 aiEmployeeSchema.index({ organizationId: 1, type: 1 });
+// Reverse lookup for inbound-call attribution: a real inbound call only tells us
+// the dialed number, so we find the active inbound employee bound to it.
+aiEmployeeSchema.index({ businessPhoneNumber: 1, type: 1, status: 1 });
 
 export type AIEmployeeDoc = InferSchemaType<typeof aiEmployeeSchema>;
 export const AIEmployee = mongoose.model('AIEmployee', aiEmployeeSchema);

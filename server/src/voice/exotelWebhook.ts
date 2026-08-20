@@ -6,6 +6,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
 import { logger } from '../utils/logger.js';
 import { handleCallEnded } from './handleCallEvent.js';
+import { resolveInboundTarget } from './inboundRouting.js';
 
 /**
  * Exotel does not sign status callbacks, so authenticity is a shared secret
@@ -57,8 +58,22 @@ exotelWebhookRoutes.post(
       // CustomField may be a plain string in manual test calls — ignore.
     }
 
-    if (!meta.organizationId || !meta.aiEmployeeId) {
-      logger.warn({ callSid }, 'Exotel call without Vorizon metadata; ignoring');
+    const direction: 'inbound' | 'outbound' = p.Direction === 'incoming' ? 'inbound' : 'outbound';
+    let organizationId = meta.organizationId;
+    let aiEmployeeId = meta.aiEmployeeId;
+
+    // Real inbound calls carry no CustomField metadata — attribute by the dialed
+    // number so they are recorded + billed instead of dropped.
+    if ((!organizationId || !aiEmployeeId) && direction === 'inbound') {
+      const target = await resolveInboundTarget(p.To);
+      if (target) {
+        organizationId = target.organizationId;
+        aiEmployeeId = target.aiEmployeeId;
+      }
+    }
+
+    if (!organizationId || !aiEmployeeId) {
+      logger.warn({ callSid, to: p.To }, 'Exotel call without Vorizon attribution; ignoring');
       return res.json({ received: true });
     }
 
@@ -69,9 +84,9 @@ exotelWebhookRoutes.post(
       externalCallId: callSid,
       provider: 'exotel',
       status: 'ended',
-      direction: (p.Direction === 'incoming' ? 'inbound' : 'outbound') as 'inbound' | 'outbound',
-      organizationId: meta.organizationId,
-      aiEmployeeId: meta.aiEmployeeId,
+      direction,
+      organizationId,
+      aiEmployeeId,
       from: p.CallerId || p.From || '',
       to: p.To || '',
       contactId: meta.contactId,
