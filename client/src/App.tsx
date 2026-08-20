@@ -25,6 +25,9 @@ const CampaignsPage = lazy(() =>
 const CampaignNewPage = lazy(() =>
   import('./pages/campaigns/CampaignNew').then((m) => ({ default: m.CampaignNewPage })),
 );
+const CampaignDetailPage = lazy(() =>
+  import('./pages/campaigns/CampaignDetail').then((m) => ({ default: m.CampaignDetailPage })),
+);
 const AnalyticsPage = lazy(() => import('./pages/Analytics').then((m) => ({ default: m.AnalyticsPage })));
 const BillingPage = lazy(() => import('./pages/Billing').then((m) => ({ default: m.BillingPage })));
 const SettingsPage = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
@@ -67,6 +70,7 @@ export function App() {
           <Route path="/leads" element={protect(<LeadsPage />)} />
           <Route path="/campaigns" element={protect(<CampaignsPage />)} />
           <Route path="/campaigns/new" element={protect(<CampaignNewPage />)} />
+          <Route path="/campaigns/:id" element={protect(<CampaignDetailPage />)} />
           <Route path="/analytics" element={protect(<AnalyticsPage />)} />
           <Route path="/billing" element={protect(<BillingPage />)} />
           <Route path="/settings" element={protect(<SettingsPage />)} />

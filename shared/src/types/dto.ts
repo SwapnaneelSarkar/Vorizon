@@ -121,6 +121,12 @@ export interface CampaignDTO {
   createdAt: string;
 }
 
+export interface CallTranscriptTurn {
+  role: 'ai' | 'customer';
+  text: string;
+  at: string;
+}
+
 export interface CallDTO {
   id: string;
   aiEmployeeId: string;
@@ -133,6 +139,10 @@ export interface CallDTO {
   provider: string;
   startedAt: string;
   endedAt?: string;
+  campaignId?: string;
+  contactId?: string;
+  contactName?: string;
+  transcript: CallTranscriptTurn[];
 }
 
 export interface UsageSummary {

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { PhoneOutgoing, Play, Plus, Trash2 } from 'lucide-react';
 import { campaignApi } from '../../lib/api/endpoints';
-import { apiErrorMessage } from '../../lib/api/client';
+import { apiErrorDetails, apiErrorMessage } from '../../lib/api/client';
 import {
   Badge,
   Button,
@@ -40,7 +40,11 @@ export function CampaignsPage() {
       qc.invalidateQueries({ queryKey: ['campaigns'] });
       qc.invalidateQueries({ queryKey: ['dashboard'] });
     },
-    onError: (e) => toast.error(apiErrorMessage(e)),
+    onError: (e) => {
+      const details = apiErrorDetails(e);
+      const reason = details?.missing?.[0];
+      toast.error(reason ?? apiErrorMessage(e));
+    },
   });
 
   const remove = useMutation({
@@ -89,7 +93,12 @@ export function CampaignsPage() {
             return (
               <Card key={c.id} className="flex flex-col">
                 <div className="mb-4 flex items-start justify-between gap-2">
-                  <h3 className="font-semibold leading-snug text-slate-900">{c.name}</h3>
+                  <Link
+                    to={`/campaigns/${c.id}`}
+                    className="font-semibold leading-snug text-slate-900 transition hover:text-brand-blue"
+                  >
+                    {c.name}
+                  </Link>
                   <span className="flex shrink-0 items-center gap-1.5">
                     <Badge>{c.status}</Badge>
                     <ConfirmButton

@@ -4,6 +4,7 @@ import { requireAuth } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import * as svc from './campaigns.service.js';
+import * as callsSvc from '../calls/calls.service.js';
 
 export const campaignRoutes = Router();
 
@@ -31,6 +32,14 @@ campaignRoutes.get(
   asyncHandler(async (req, res) => {
     const dto = await svc.getCampaign(req.user!.organizationId, req.params.id);
     res.json({ data: dto });
+  }),
+);
+
+campaignRoutes.get(
+  '/:id/calls',
+  asyncHandler(async (req, res) => {
+    const items = await callsSvc.listCallsForCampaign(req.user!.organizationId, req.params.id);
+    res.json({ data: items });
   }),
 );
 

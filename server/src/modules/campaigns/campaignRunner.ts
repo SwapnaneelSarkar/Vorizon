@@ -29,6 +29,54 @@ function mockOutcome(seed: number): { outcome: CallOutcome; durationSec: number;
 const RETRYABLE: CallOutcome[] = ['no_answer', 'failed'];
 
 /**
+ * Canned transcript for mock calls, so the transcript-viewer UI has something
+ * to show without a real voice provider connected. no_answer/failed calls
+ * never connect, so they get no transcript — that's accurate, not a gap.
+ */
+function mockTranscript(
+  outcome: CallOutcome,
+  employeeName: string,
+  contactName: string,
+  startedAt: Date,
+): { role: 'ai' | 'customer'; text: string; at: string }[] {
+  if (outcome === 'no_answer' || outcome === 'failed') return [];
+
+  const lines: { role: 'ai' | 'customer'; text: string }[] = [
+    {
+      role: 'ai',
+      text: `Hi, this is ${employeeName} calling on behalf of our team — is this ${contactName}? This call may be recorded for quality purposes.`,
+    },
+    { role: 'customer', text: `Yes, speaking. What's this about?` },
+    {
+      role: 'ai',
+      text: `I'm reaching out about your recent inquiry. Do you have a couple of minutes to talk it through?`,
+    },
+    { role: 'customer', text: `Sure, go ahead.` },
+  ];
+
+  if (outcome === 'transferred') {
+    lines.push(
+      {
+        role: 'ai',
+        text: `Great — this sounds like something our specialist can help with directly. Let me connect you now.`,
+      },
+      { role: 'customer', text: `Okay, thank you.` },
+    );
+  } else {
+    lines.push(
+      { role: 'ai', text: `Perfect, let me walk you through the details.` },
+      { role: 'customer', text: `That makes sense, thanks for explaining.` },
+      { role: 'ai', text: `You're welcome — I'll follow up by email with a summary. Have a great day!` },
+    );
+  }
+
+  return lines.map((line, i) => ({
+    ...line,
+    at: new Date(startedAt.getTime() + i * 4000).toISOString(),
+  }));
+}
+
+/**
  * Process one campaign to completion. Runs in the background (not in the request
  * path). Respects dailyCallLimit and retryAttempts, and stops early if the
  * campaign is paused.
@@ -107,7 +155,16 @@ export async function runCampaign(orgId: string, campaignId: string): Promise<vo
         });
       } catch (err) {
         logger.error({ err, campaignId, to: contact.phone }, 'Outbound dial failed');
-        await emit(orgId, String(employee._id), campaign, contact, { outcome: 'failed', durationSec: 0, escalated: false }, 0, runId);
+        await emit(
+          orgId,
+          String(employee._id),
+          employee.name,
+          campaign,
+          contact,
+          { outcome: 'failed', durationSec: 0, escalated: false },
+          0,
+          runId,
+        );
       }
       continue;
     }
@@ -115,13 +172,13 @@ export async function runCampaign(orgId: string, campaignId: string): Promise<vo
     // Mock telephony: simulate the outcome (with retries) synchronously.
     let attempt = 0;
     let result = mockOutcome(i);
-    await emit(orgId, String(employee._id), campaign, contact, result, attempt, runId);
+    await emit(orgId, String(employee._id), employee.name, campaign, contact, result, attempt, runId);
 
     // Retry failed/no-answer calls up to retryAttempts (interval is a no-op in mock).
     while (RETRYABLE.includes(result.outcome) && attempt < campaign.retryAttempts) {
       attempt += 1;
       result = mockOutcome(i + attempt * 7);
-      await emit(orgId, String(employee._id), campaign, contact, result, attempt, runId);
+      await emit(orgId, String(employee._id), employee.name, campaign, contact, result, attempt, runId);
     }
   }
 
@@ -158,12 +215,14 @@ async function notifyCampaignCompleted(
 async function emit(
   orgId: string,
   employeeId: string,
+  employeeName: string,
   campaign: { _id: unknown },
-  contact: { _id: unknown; phone: string },
+  contact: { _id: unknown; phone: string; name: string },
   result: { outcome: CallOutcome; durationSec: number; escalated: boolean },
   attempt: number,
   runId: number,
 ) {
+  const startedAt = new Date(Date.now() - result.durationSec * 1000);
   await handleCallEnded({
     externalCallId: `mock-outbound-${runId}-${String(campaign._id)}-${String(contact._id)}-${attempt}`,
     status: 'ended',
@@ -177,5 +236,6 @@ async function emit(
     durationSec: result.durationSec,
     outcome: result.outcome,
     escalated: result.escalated,
+    transcript: mockTranscript(result.outcome, employeeName, contact.name, startedAt),
   });
 }

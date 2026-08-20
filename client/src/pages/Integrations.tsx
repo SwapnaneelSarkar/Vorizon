@@ -107,11 +107,28 @@ function ConnectorCard({ c, onChanged }: { c: ConnectorInfo; onChanged: () => vo
   );
 }
 
+/** Which OAuth app (and therefore which developer console) backs each connector. */
+const providerVendor: Record<string, { name: string; consoleHint: string }> = {
+  google_ads: { name: 'Google', consoleHint: 'Google Cloud Console → APIs & Services → OAuth consent screen' },
+  gmail: { name: 'Google', consoleHint: 'Google Cloud Console → APIs & Services → OAuth consent screen' },
+  google_calendar: { name: 'Google', consoleHint: 'Google Cloud Console → APIs & Services → OAuth consent screen' },
+  meta_ads: { name: 'Meta', consoleHint: 'Meta App Dashboard → App Review / App Mode' },
+  whatsapp: { name: 'Meta', consoleHint: 'Meta App Dashboard → App Review / App Mode' },
+  instagram: { name: 'Meta', consoleHint: 'Meta App Dashboard → App Review / App Mode' },
+  facebook_pages: { name: 'Meta', consoleHint: 'Meta App Dashboard → App Review / App Mode' },
+  zoho: { name: 'Zoho', consoleHint: 'Zoho API Console → your client → Redirect URIs' },
+  hubspot: { name: 'HubSpot', consoleHint: 'HubSpot Developer account → your app → Auth' },
+  salesforce: { name: 'Salesforce', consoleHint: 'Salesforce Connected App settings' },
+};
+
 /** Actionable copy for the OAuth-callback error codes our backend redirects with. */
-function errorHelp(code: string): string {
+function errorHelp(code: string, provider?: string): string {
+  const vendor = provider ? providerVendor[provider] : undefined;
   switch (code) {
     case 'access_denied':
-      return 'Google blocked the sign-in because the app is still unverified. Add your email as a Test User in Google Cloud → APIs & Services → OAuth consent screen → Test users, then try again.';
+      return vendor
+        ? `${vendor.name} blocked the sign-in — this almost always means the app is still in test/development mode there. Go to ${vendor.consoleHint} and publish the app to production (or add your account as an approved tester), then try Connect again.`
+        : 'The provider blocked the sign-in — this almost always means their app is still in test/development mode. Publish it to production in the provider’s developer console, then try Connect again.';
     case 'invalid_state':
       return 'That connection link expired. Please click Connect again.';
     case 'connect_failed':
@@ -138,7 +155,7 @@ export function IntegrationsPage() {
     }
     // Errors persist in a dismissible banner (they're long and actionable) rather
     // than a transient toast.
-    if (error) setOauthError(errorHelp(error));
+    if (error) setOauthError(errorHelp(error, params.get('provider') ?? undefined));
     if (connected || error) setParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

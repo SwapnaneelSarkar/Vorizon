@@ -42,7 +42,11 @@ integrationRoutes.get(
     const { code, state, error } = req.query as Record<string, string>;
     const appUrl = env.APP_BASE_URL.replace(/\/$/, '');
 
-    if (error) return res.redirect(`${appUrl}/integrations?error=${encodeURIComponent(error)}`);
+    if (error) {
+      return res.redirect(
+        `${appUrl}/integrations?error=${encodeURIComponent(error)}&provider=${encodeURIComponent(provider)}`,
+      );
+    }
     const verified = state ? svc.verifyState(state) : null;
     if (!verified || verified.provider !== provider || !code) {
       return res.redirect(`${appUrl}/integrations?error=invalid_state`);

@@ -1,6 +1,7 @@
 import type {
   AIEmployeeDTO,
   AuthResponse,
+  CallDTO,
   CampaignDTO,
   ComplianceSettingsDTO,
   ConnectorInfo,
@@ -133,6 +134,13 @@ export const campaignApi = {
   pause: (id: string) => unwrap<CampaignDTO>(api.post(`/campaigns/${id}/pause`)),
   resume: (id: string) => unwrap<CampaignDTO>(api.post(`/campaigns/${id}/resume`)),
   remove: (id: string) => api.delete(`/campaigns/${id}`),
+};
+
+// ---- calls ----
+export const callApi = {
+  listForCampaign: (campaignId: string) =>
+    unwrap<CallDTO[]>(api.get(`/campaigns/${campaignId}/calls`)),
+  get: (id: string) => unwrap<CallDTO>(api.get(`/calls/${id}`)),
 };
 
 // ---- billing & analytics ----
