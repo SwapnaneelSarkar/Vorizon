@@ -16,9 +16,10 @@ export interface CampaignQueue {
   /**
    * Persist/start the job. MUST be awaited by callers: on serverless runtimes
    * the instance freezes once the response is sent, so a fire-and-forget
-   * enqueue would silently never commit.
+   * enqueue would silently never commit. `availableAt` (epoch ms) defers the
+   * job — used for retries, daily-cap continuation, and closed-window waits.
    */
-  enqueue(orgId: string, campaignId: string): Promise<void>;
+  enqueue(orgId: string, campaignId: string, availableAt?: number): Promise<void>;
   /** Test/CI helper: resolve when in-flight in-process jobs settle. */
   drain(): Promise<void>;
 }
@@ -26,9 +27,18 @@ export interface CampaignQueue {
 class InProcessCampaignQueue implements CampaignQueue {
   private inFlight = new Set<Promise<void>>();
 
-  async enqueue(orgId: string, campaignId: string): Promise<void> {
+  async enqueue(orgId: string, campaignId: string, availableAt?: number): Promise<void> {
+    // Single-instance in-process queue (dev / no-Firebase): there is no durable
+    // store to hold a deferred job, so a future-dated run is dropped rather than
+    // busy-waited. Continuation (retries, daily cap, closed window) requires the
+    // Firestore queue + scheduled worker in production.
+    if (availableAt && availableAt > Date.now() + 1000) {
+      logger.info({ campaignId, availableAt }, 'Deferred campaign run skipped (in-process queue)');
+      return;
+    }
     // Intentionally does not await the run itself — only its scheduling.
     const job = runCampaign(orgId, campaignId)
+      .then(() => undefined)
       .catch((err) => logger.error({ err, campaignId }, 'Campaign run failed'))
       .finally(() => this.inFlight.delete(job));
     this.inFlight.add(job);

@@ -34,9 +34,25 @@ async function claim(campaignId: string): Promise<CampaignJob | null> {
 async function execute(job: CampaignJob): Promise<void> {
   const ref = jobRef(job.campaignId);
   try {
-    await runCampaign(job.orgId, job.campaignId);
-    await ref.delete();
-    logger.info({ campaignId: job.campaignId }, 'Campaign job completed');
+    const requeueAt = await runCampaign(job.orgId, job.campaignId);
+    if (requeueAt && requeueAt > Date.now()) {
+      // The run wants to continue later (daily-cap remainder, future retries, or
+      // a closed calling window). Reschedule the same job instead of deleting it,
+      // resetting attempts so the deferral doesn't count as a failure. Rebuilt
+      // clean (no failedAt) — Firestore rejects undefined fields.
+      const deferred: CampaignJob = {
+        orgId: job.orgId,
+        campaignId: job.campaignId,
+        attempts: 0,
+        availableAt: requeueAt,
+        createdAt: job.createdAt,
+      };
+      await ref.set(deferred);
+      logger.info({ campaignId: job.campaignId, requeueAt }, 'Campaign job deferred');
+    } else {
+      await ref.delete();
+      logger.info({ campaignId: job.campaignId }, 'Campaign job completed');
+    }
   } catch (err) {
     logger.error({ err, campaignId: job.campaignId, attempt: job.attempts }, 'Campaign job failed');
     const update: Partial<CampaignJob> =

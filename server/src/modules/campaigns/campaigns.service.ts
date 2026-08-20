@@ -120,6 +120,13 @@ export async function launchCampaign(orgId: string, id: string): Promise<Campaig
     throw ApiError.precondition('Cannot launch campaign', ['Upload at least one valid contact']);
   }
 
+  // Reset per-contact dial state so a (re)launch dials every valid contact fresh
+  // — a previously-completed campaign's contacts would otherwise be left 'done'.
+  await Contact.updateMany(
+    { organizationId: orgId, campaignId: campaign._id, validationStatus: 'valid' },
+    { $set: { dialStatus: 'pending', dialAttempts: 0, nextAttemptAt: null, lastDialedAt: null } },
+  );
+
   campaign.status = 'running';
   campaign.stats = {
     total,
@@ -142,8 +149,13 @@ export async function pauseCampaign(orgId: string, id: string): Promise<Campaign
 
 export async function resumeCampaign(orgId: string, id: string): Promise<CampaignDTO> {
   const campaign = await loadCampaign(orgId, id);
-  if (campaign.status === 'paused') campaign.status = 'running';
-  await campaign.save();
+  if (campaign.status === 'paused') {
+    campaign.status = 'running';
+    await campaign.save();
+    // Re-enqueue: pausing let the previous job drain/delete, so without this the
+    // resumed campaign would sit 'running' forever with no worker to pick it up.
+    await campaignQueue.enqueue(orgId, id);
+  }
   return toDTO(campaign);
 }
 

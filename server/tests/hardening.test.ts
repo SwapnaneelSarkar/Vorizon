@@ -121,7 +121,13 @@ describe('async campaign runner', () => {
     ).expect(201);
 
     const camp = await auth(
-      request(app).post('/api/campaigns').send({ name: 'Camp', aiEmployeeId: eid, dailyCallLimit: 100 }),
+      request(app).post('/api/campaigns').send({
+        name: 'Camp',
+        aiEmployeeId: eid,
+        dailyCallLimit: 100,
+        // Open 24/7 so the run is deterministic regardless of wall-clock time.
+        callingSchedule: { tz: 'UTC', days: [0, 1, 2, 3, 4, 5, 6], start: '00:00', end: '23:59' },
+      }),
     ).expect(201);
     const cid = camp.body.data.id;
 

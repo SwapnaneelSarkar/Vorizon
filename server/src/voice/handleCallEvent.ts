@@ -4,6 +4,7 @@ import { Campaign } from '../models/Campaign.js';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 import { debit } from '../modules/billing/wallet.service.js';
+import { settleContact, reconcileCampaign } from '../modules/campaigns/campaignProgress.js';
 import type { CallEvent } from './VoiceEngine.js';
 
 /**
@@ -95,6 +96,18 @@ export async function handleCallEnded(event: CallEvent) {
         },
       },
     );
+
+    // Settle this contact (done / schedule a retry) and reconcile the campaign
+    // (complete when no work remains, or re-queue for future retries). This is
+    // the single settlement point for BOTH the mock path (called synchronously
+    // from the runner) and the real path (called from the provider webhook).
+    if (event.direction === 'outbound' && event.contactId) {
+      const campaign = await Campaign.findById(event.campaignId);
+      if (campaign) {
+        await settleContact(event.contactId, outcome, campaign);
+        await reconcileCampaign(String(campaign.organizationId), String(campaign._id));
+      }
+    }
   }
 
   logger.info({ callId: String(call._id), durationSec, outcome, billable }, 'Call recorded');

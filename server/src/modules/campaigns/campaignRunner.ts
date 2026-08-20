@@ -1,14 +1,10 @@
 import type { CallOutcome } from '@vorizon/shared';
-import { Campaign, type CampaignDoc } from '../../models/Campaign.js';
-import { Contact } from '../../models/Contact.js';
+import { Campaign } from '../../models/Campaign.js';
+import { Contact, type ContactDoc } from '../../models/Contact.js';
 import { AIEmployee } from '../../models/AIEmployee.js';
-import { Organization } from '../../models/Organization.js';
-import { User } from '../../models/User.js';
-import { env } from '../../config/env.js';
 import { getVoiceEngine } from '../../voice/index.js';
 import { handleCallEnded } from '../../voice/handleCallEvent.js';
 import { logger } from '../../utils/logger.js';
-import { sendNotificationEmail } from '../email/email.service.js';
 import {
   callBlockReason,
   getRecordingDisclosure,
@@ -16,6 +12,15 @@ import {
   recordSkippedCall,
 } from '../compliance/compliance.service.js';
 import { hasBalance } from '../billing/wallet.service.js';
+import { withinWindow } from './schedule.js';
+import { assessCampaign, completeCampaign } from './campaignProgress.js';
+
+type ContactRecord = ContactDoc & { _id: unknown };
+
+/** When outside the calling window, re-check this often until it opens. */
+const OUT_OF_WINDOW_DEFER_MS = 30 * 60 * 1000;
+/** When the per-run dial cap is hit with contacts still due, continue later. */
+const DAILY_CAP_DEFER_MS = 6 * 60 * 60 * 1000;
 
 /** Deterministic mock outcome so runs are reproducible (no Math.random). */
 function mockOutcome(seed: number): { outcome: CallOutcome; durationSec: number; escalated: boolean } {
@@ -25,8 +30,6 @@ function mockOutcome(seed: number): { outcome: CallOutcome; durationSec: number;
   if (cycle === 2) return { outcome: 'transferred', durationSec: 90 + ((seed * 7) % 120), escalated: true };
   return { outcome: 'completed', durationSec: 60 + ((seed * 13) % 180), escalated: false };
 }
-
-const RETRYABLE: CallOutcome[] = ['no_answer', 'failed'];
 
 /**
  * Canned transcript for mock calls, so the transcript-viewer UI has something
@@ -77,72 +80,92 @@ function mockTranscript(
 }
 
 /**
- * Process one campaign to completion. Runs in the background (not in the request
- * path). Respects dailyCallLimit and retryAttempts, and stops early if the
- * campaign is paused.
- *
- * Compliance: aborts unless the org has recorded calling consent, and every
- * contact is re-checked against opt-out + the DNC list immediately before
- * dialing (the lists may change mid-run).
- *
- * With a real voice engine (Retell), dials are initiated here and outcomes
- * arrive later via the provider webhook. With the mock engine, outcomes are
- * simulated synchronously through the shared metering pipeline.
+ * Atomically claim the next dialable contact: flip pending→dialing, stamp the
+ * attempt. The atomic findOneAndUpdate means two concurrent workers can never
+ * grab the same contact (no duplicate live calls / double billing).
  */
-export async function runCampaign(orgId: string, campaignId: string): Promise<void> {
+async function claimNextContact(campaignId: unknown, now: Date): Promise<ContactRecord | null> {
+  return (await Contact.findOneAndUpdate(
+    {
+      campaignId,
+      validationStatus: 'valid',
+      optedOut: { $ne: true },
+      dialStatus: 'pending',
+      $or: [{ nextAttemptAt: null }, { nextAttemptAt: { $lte: now } }],
+    },
+    { $set: { dialStatus: 'dialing', lastDialedAt: now }, $inc: { dialAttempts: 1 } },
+    { sort: { nextAttemptAt: 1, _id: 1 }, new: true },
+  )) as ContactRecord | null;
+}
+
+/**
+ * Process one campaign run. Dials due contacts up to the per-run cap, honoring
+ * calling hours, consent, wallet balance, opt-out/DNC, and per-contact retry
+ * state. Returns the epoch-ms time the job should next run (daily-cap remainder,
+ * future retries, or closed window), or null when nothing more is queued here
+ * (completed, paused, or waiting on async webhook outcomes).
+ *
+ * Mock engine: outcomes are simulated synchronously through handleCallEnded,
+ * which settles the contact + reconciles the campaign. Real engine: dials are
+ * initiated and the contact stays 'dialing' until the provider webhook settles it.
+ */
+export async function runCampaign(orgId: string, campaignId: string): Promise<number | null> {
   const campaign = await Campaign.findOne({ _id: campaignId, organizationId: orgId });
-  if (!campaign || campaign.status !== 'running') return;
+  if (!campaign || campaign.status !== 'running') return null;
   const employee = await AIEmployee.findById(campaign.aiEmployeeId);
-  if (!employee) return;
+  if (!employee) return null;
 
   // Defense in depth: launch already requires consent, but re-verify at run time.
   if (!(await hasCallingConsent(orgId))) {
     logger.warn({ campaignId, orgId }, 'Campaign paused: calling consent not recorded');
-    campaign.status = 'paused';
-    await campaign.save();
-    return;
+    await Campaign.updateOne({ _id: campaignId }, { status: 'paused' });
+    return null;
+  }
+
+  // Calling-hours gate: never dial outside the configured window (TCPA). Defer
+  // and re-check until the window opens.
+  const now = new Date();
+  if (!withinWindow(campaign.callingSchedule, now)) {
+    logger.info({ campaignId }, 'Outside calling window — deferring');
+    return now.getTime() + OUT_OF_WINDOW_DEFER_MS;
   }
 
   const disclosure = await getRecordingDisclosure(orgId);
   const engine = getVoiceEngine();
-  // Distinguishes calls across re-launches of the same campaign (mock ids must
-  // stay unique — handleCallEnded dedupes on externalCallId).
-  const runId = Date.now();
+  // Distinguishes calls across re-launches (mock ids must stay unique — the
+  // Call.externalCallId index dedupes).
+  const runId = now.getTime();
 
-  const contacts = await Contact.find({
-    organizationId: orgId,
-    campaignId: campaign._id,
-    validationStatus: 'valid',
-    optedOut: { $ne: true },
-  }).limit(campaign.dailyCallLimit);
-
-  for (let i = 0; i < contacts.length; i++) {
+  let dials = 0;
+  while (dials < campaign.dailyCallLimit) {
     // Honor pause/stop between contacts.
     const current = await Campaign.findById(campaignId).select('status');
-    if (!current || current.status !== 'running') return;
+    if (!current || current.status !== 'running') return null;
 
-    // Prepaid gate: pause the campaign the moment the wallet is depleted so we
-    // never place a call the org can't pay for (the depleted email fires from
-    // the debit that emptied it).
+    // Prepaid gate: pause the moment the wallet is depleted so we never place a
+    // call the org can't pay for.
     if (!(await hasBalance(orgId))) {
       logger.info({ campaignId, orgId }, 'Campaign paused: wallet balance depleted');
       await Campaign.updateOne({ _id: campaignId }, { status: 'paused' });
-      return;
+      return null;
     }
 
-    const contact = contacts[i];
+    const contact = await claimNextContact(campaign._id, now);
+    if (!contact) break; // nothing due right now
 
     // Pre-dial compliance gate: opt-out and DNC re-checked per call.
     const blocked = await callBlockReason(orgId, contact);
     if (blocked) {
+      await Contact.updateOne({ _id: contact._id }, { $set: { dialStatus: 'skipped' } });
       await recordSkippedCall(orgId, campaignId, contact.phone, blocked);
-      continue;
+      continue; // skips are not billable dials
     }
 
+    dials += 1;
+
     if (engine.startOutboundCall) {
-      // Real telephony: initiate the dial; the outcome (duration, transcript,
-      // metering) arrives via the provider webhook. Dial failures are recorded
-      // as failed calls so campaign stats stay truthful.
+      // Real telephony: initiate the dial; the contact stays 'dialing' until the
+      // provider webhook delivers the outcome (which settles it + reconciles).
       try {
         await engine.startOutboundCall({
           organizationId: orgId,
@@ -155,87 +178,64 @@ export async function runCampaign(orgId: string, campaignId: string): Promise<vo
         });
       } catch (err) {
         logger.error({ err, campaignId, to: contact.phone }, 'Outbound dial failed');
-        await emit(
-          orgId,
-          String(employee._id),
-          employee.name,
-          campaign,
-          contact,
-          { outcome: 'failed', durationSec: 0, escalated: false },
-          0,
-          runId,
-        );
+        // Record a failed attempt through the shared pipeline (settles/retries).
+        await emit(orgId, employee, campaign._id, contact, { outcome: 'failed', durationSec: 0, escalated: false }, runId);
       }
       continue;
     }
 
-    // Mock telephony: simulate the outcome (with retries) synchronously.
-    let attempt = 0;
-    let result = mockOutcome(i);
-    await emit(orgId, String(employee._id), employee.name, campaign, contact, result, attempt, runId);
-
-    // Retry failed/no-answer calls up to retryAttempts (interval is a no-op in mock).
-    while (RETRYABLE.includes(result.outcome) && attempt < campaign.retryAttempts) {
-      attempt += 1;
-      result = mockOutcome(i + attempt * 7);
-      await emit(orgId, String(employee._id), employee.name, campaign, contact, result, attempt, runId);
-    }
+    // Mock telephony: simulate the outcome synchronously. handleCallEnded records
+    // + meters the call and settles the contact + reconciles the campaign.
+    const result = mockOutcome(runId + dials + Number(contact.dialAttempts ?? 0));
+    await emit(orgId, employee, campaign._id, contact, result, runId);
   }
 
-  const fresh = await Campaign.findById(campaignId);
-  if (fresh && fresh.status === 'running') {
-    fresh.status = 'completed';
-    await fresh.save();
-    await notifyCampaignCompleted(orgId, fresh);
+  // Decide what happens next based on remaining work.
+  const fresh = await Campaign.findById(campaignId).select('status');
+  if (!fresh || fresh.status !== 'running') return null;
+
+  const work = await assessCampaign(campaign._id, Date.now());
+  if (work.dueNow > 0) {
+    // Hit the per-run dial cap with contacts still due — continue later.
+    return Date.now() + DAILY_CAP_DEFER_MS;
   }
+  if (work.dialing > 0) {
+    // Real-telephony dials are in flight; the webhook path completes the campaign.
+    return null;
+  }
+  if (work.futureRetry > 0) {
+    // Only future retries remain — reschedule the job for the earliest one.
+    return work.earliestFutureMs ?? Date.now() + 60_000;
+  }
+  // Nothing left — complete now.
+  const done = await Campaign.findById(campaignId);
+  if (done && done.status === 'running') await completeCampaign(orgId, done);
   logger.info({ campaignId, provider: engine.provider }, 'Campaign run finished');
-}
-
-/** Email the org owner a completion summary. Fire-and-forget. */
-async function notifyCampaignCompleted(
-  orgId: string,
-  campaign: CampaignDoc & { _id?: unknown },
-): Promise<void> {
-  try {
-    const org = await Organization.findById(orgId).select('createdBy');
-    const owner = org?.createdBy ? await User.findById(org.createdBy).select('email') : null;
-    if (!owner?.email) return;
-    const s = campaign.stats;
-    await sendNotificationEmail(
-      owner.email,
-      `Campaign "${campaign.name}" completed`,
-      `Attempted ${s?.attempted ?? 0} of ${s?.total ?? 0} contacts — ${s?.connected ?? 0} connected, ${s?.failed ?? 0} failed.`,
-      { label: 'View campaigns', url: `${env.APP_BASE_URL}/campaigns` },
-    );
-  } catch (err) {
-    logger.warn({ err, campaignId: String(campaign._id ?? '') }, 'Campaign completion email failed');
-  }
+  return null;
 }
 
 async function emit(
   orgId: string,
-  employeeId: string,
-  employeeName: string,
-  campaign: { _id: unknown },
-  contact: { _id: unknown; phone: string; name: string },
+  employee: { _id: unknown; name: string },
+  campaignId: unknown,
+  contact: ContactRecord,
   result: { outcome: CallOutcome; durationSec: number; escalated: boolean },
-  attempt: number,
   runId: number,
 ) {
   const startedAt = new Date(Date.now() - result.durationSec * 1000);
   await handleCallEnded({
-    externalCallId: `mock-outbound-${runId}-${String(campaign._id)}-${String(contact._id)}-${attempt}`,
+    externalCallId: `mock-outbound-${runId}-${String(campaignId)}-${String(contact._id)}-${Number(contact.dialAttempts ?? 0)}`,
     status: 'ended',
     direction: 'outbound',
     organizationId: orgId,
-    aiEmployeeId: employeeId,
+    aiEmployeeId: String(employee._id),
     from: '+18005550100',
     to: contact.phone,
     contactId: String(contact._id),
-    campaignId: String(campaign._id),
+    campaignId: String(campaignId),
     durationSec: result.durationSec,
     outcome: result.outcome,
     escalated: result.escalated,
-    transcript: mockTranscript(result.outcome, employeeName, contact.name, startedAt),
+    transcript: mockTranscript(result.outcome, employee.name, contact.name, startedAt),
   });
 }

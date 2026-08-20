@@ -33,7 +33,7 @@ export class FirestoreCampaignQueue {
     logger.info('Campaign queue backed by Firestore');
   }
 
-  async enqueue(orgId: string, campaignId: string): Promise<void> {
+  async enqueue(orgId: string, campaignId: string, availableAt?: number): Promise<void> {
     const db = getDb()!;
     const ref = jobRef(campaignId);
     // Awaited to completion: on serverless the instance freezes after the
@@ -45,7 +45,13 @@ export class FirestoreCampaignQueue {
         // Dedupe: a live (queued or leased) job for this campaign already exists.
         if (existing && !existing.failedAt) return;
         const now = Date.now();
-        const job: CampaignJob = { orgId, campaignId, attempts: 0, availableAt: now, createdAt: now };
+        const job: CampaignJob = {
+          orgId,
+          campaignId,
+          attempts: 0,
+          availableAt: availableAt && availableAt > now ? availableAt : now,
+          createdAt: now,
+        };
         tx.set(ref, job);
       });
     } catch (err) {
