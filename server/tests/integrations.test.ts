@@ -144,7 +144,8 @@ describe('compliance: campaign enforcement', () => {
         retryAttempts: 0,
         retryInterval: 30,
         dailyCallLimit: 50,
-        callingSchedule: { tz: 'UTC', days: [1, 2, 3, 4, 5], start: '09:00', end: '17:00' },
+        // Open 24/7 so the DNC assertion is deterministic regardless of wall-clock time.
+        callingSchedule: { tz: 'UTC', days: [0, 1, 2, 3, 4, 5, 6], start: '00:00', end: '23:59' },
       }),
     ).expect(201);
     const campaignId = camp.body.data.id;

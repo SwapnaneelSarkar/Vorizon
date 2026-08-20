@@ -5,6 +5,7 @@ import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 import { debit } from '../modules/billing/wallet.service.js';
 import { settleContact, reconcileCampaign } from '../modules/campaigns/campaignProgress.js';
+import { Lead } from '../models/Lead.js';
 import type { CallEvent } from './VoiceEngine.js';
 
 /**
@@ -106,6 +107,14 @@ export async function handleCallEnded(event: CallEvent) {
       if (campaign) {
         await settleContact(event.contactId, outcome, campaign);
         await reconcileCampaign(String(campaign.organizationId), String(campaign._id));
+        // A lead-sourced call that actually connected advances the lead to
+        // 'contacted' (only now, not eagerly at qualification time).
+        if (connected) {
+          await Lead.updateOne(
+            { contactId: event.contactId, status: { $in: ['new', 'qualifying', 'qualified'] } },
+            { $set: { status: 'contacted' } },
+          );
+        }
       }
     }
   }

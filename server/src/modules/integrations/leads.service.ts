@@ -1,9 +1,18 @@
+import type { HydratedDocument } from 'mongoose';
 import type { InboundLeadInput, LeadDTO, LeadStatus } from '@vorizon/shared';
 import { Lead, type LeadDoc } from '../../models/Lead.js';
+import { AIEmployee } from '../../models/AIEmployee.js';
+import { Campaign } from '../../models/Campaign.js';
+import { Contact } from '../../models/Contact.js';
 import { logger } from '../../utils/logger.js';
 import { toE164 } from '../../utils/phone.js';
 import { getVoiceEngine } from '../../voice/index.js';
-import { callBlockReason } from '../compliance/compliance.service.js';
+import { callBlockReason, hasCallingConsent } from '../compliance/compliance.service.js';
+import { hasBalance } from '../billing/wallet.service.js';
+import { campaignQueue } from '../campaigns/campaignQueue.js';
+
+/** Per-org default campaign that rolling inbound leads are dialed through. */
+const DEFAULT_LEAD_CAMPAIGN = 'Inbound Leads';
 
 type LeadRecord = LeadDoc & { _id: unknown; createdAt?: Date };
 
@@ -108,17 +117,99 @@ export async function qualifyLead(orgId: string, leadId: string): Promise<void> 
   lead.status = score >= 50 ? 'qualified' : 'unqualified';
   await lead.save();
 
-  // Compliance-gated next step: only qualified leads with a callable phone advance.
+  // Compliance-gated next step: only qualified leads with a callable phone advance
+  // into the calling pipeline. The lead stays 'qualified' until a call actually
+  // connects (handleCallEnded flips it to 'contacted') — never eagerly.
   if (lead.status === 'qualified' && lead.phone) {
-    const blocked = await callBlockReason(orgId, { phone: lead.phone, optedOut: false });
-    if (blocked) {
-      logger.info({ leadId, reason: blocked }, 'Qualified lead not called (compliance)');
-    } else {
-      lead.status = 'contacted';
-      await lead.save();
-      logger.info({ leadId, score }, 'Lead qualified and marked for contact');
-    }
+    await enqueueLeadCall(orgId, lead).catch((err) =>
+      logger.error({ err, leadId }, 'Enqueue lead call failed'),
+    );
   }
+}
+
+/**
+ * Turn a qualified lead into a real dial by reusing the campaign pipeline (which
+ * enforces the wallet, consent and per-call DNC gates) rather than dialing
+ * directly. Leaves the lead 'qualified' with a logged reason when the org isn't
+ * ready (no outbound employee, no consent, no funds, unblockable number).
+ */
+async function enqueueLeadCall(orgId: string, lead: HydratedDocument<LeadDoc>): Promise<void> {
+  const leadId = String(lead._id);
+
+  // Opt-out / DNC gate before anything downstream.
+  const blocked = await callBlockReason(orgId, { phone: lead.phone, optedOut: false });
+  if (blocked) {
+    logger.info({ leadId, reason: blocked }, 'Qualified lead not called (compliance)');
+    return;
+  }
+
+  const phone = toE164(lead.phone);
+  if (!phone) {
+    logger.info({ leadId }, 'Qualified lead has no dialable phone — awaiting fix');
+    return;
+  }
+
+  // Needs a tested outbound employee + consent + funds, or the lead simply waits.
+  const employee = await AIEmployee.findOne({ organizationId: orgId, type: 'outbound', tested: true }).sort({ createdAt: 1 });
+  if (!employee) {
+    logger.info({ leadId }, 'No tested outbound employee — lead awaits setup');
+    return;
+  }
+  if (!(await hasCallingConsent(orgId))) {
+    logger.info({ leadId }, 'Calling consent not recorded — lead awaits setup');
+    return;
+  }
+  if (!(await hasBalance(orgId))) {
+    logger.info({ leadId }, 'Wallet empty — lead awaits funds');
+    return;
+  }
+
+  // Target campaign: the lead's own if set, else the per-org rolling default.
+  let campaign = lead.campaignId
+    ? await Campaign.findOne({ _id: lead.campaignId, organizationId: orgId })
+    : null;
+  if (!campaign) {
+    campaign =
+      (await Campaign.findOne({ organizationId: orgId, aiEmployeeId: employee._id, name: DEFAULT_LEAD_CAMPAIGN })) ??
+      (await Campaign.create({
+        organizationId: orgId,
+        aiEmployeeId: employee._id,
+        name: DEFAULT_LEAD_CAMPAIGN,
+        status: 'draft',
+      }));
+  }
+
+  // Materialize the lead as a dialable contact on that campaign.
+  const existing = lead.contactId ? await Contact.findById(lead.contactId) : null;
+  if (existing) {
+    await Contact.updateOne(
+      { _id: existing._id },
+      { $set: { campaignId: campaign._id, validationStatus: 'valid', dialStatus: 'pending', dialAttempts: 0, nextAttemptAt: null } },
+    );
+  } else {
+    const contact = await Contact.create({
+      organizationId: orgId,
+      name: lead.name,
+      phone,
+      email: lead.email || '',
+      company: lead.company || '',
+      campaignId: campaign._id,
+      validationStatus: 'valid',
+      dialStatus: 'pending',
+    });
+    lead.contactId = contact._id as typeof lead.contactId;
+    await lead.save();
+  }
+
+  // Ensure the campaign is running with an up-to-date total, then enqueue.
+  const total = await Contact.countDocuments({
+    organizationId: orgId,
+    campaignId: campaign._id,
+    validationStatus: 'valid',
+  });
+  await Campaign.updateOne({ _id: campaign._id }, { $set: { status: 'running', 'stats.total': total } });
+  await campaignQueue.enqueue(orgId, String(campaign._id));
+  logger.info({ leadId, campaignId: String(campaign._id) }, 'Qualified lead enqueued for calling');
 }
 
 export async function listLeads(
