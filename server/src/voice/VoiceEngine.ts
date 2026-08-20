@@ -34,6 +34,8 @@ export interface OutboundCallParams {
   to: string;
   /** Recording disclosure to announce at call start; null when disabled. */
   disclosure: string | null;
+  /** This employee's own provider agent id (from syncAssistant); falls back to a shared agent. */
+  agentId?: string;
 }
 
 /**

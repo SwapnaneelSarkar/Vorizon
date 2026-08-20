@@ -5,11 +5,18 @@ import { Responsibility } from '../../models/Responsibility.js';
 const MAX_KNOWLEDGE_CHARS = 8000;
 
 /**
- * Compile an employee's live configuration into a system prompt. Called every
- * interview turn so mid-session edits to knowledge/responsibilities/tone/rules
- * take effect immediately.
+ * Compile an employee's live configuration into a system prompt.
+ *
+ * - `interview` (default): the dashboard test chat, where the owner role-plays a
+ *   customer. Called every turn so mid-session config edits take effect.
+ * - `production`: the prompt shipped to the REAL voice agent (Retell). It MUST
+ *   NOT contain the interview framing ("being tested by the owner playing a
+ *   customer"), or the live agent would treat every real caller as a test.
  */
-export async function compileSystemPrompt(employee: AIEmployeeDoc & { _id: unknown }): Promise<string> {
+export async function compileSystemPrompt(
+  employee: AIEmployeeDoc & { _id: unknown },
+  mode: 'interview' | 'production' = 'interview',
+): Promise<string> {
   const [responsibilities, knowledge] = await Promise.all([
     Responsibility.find({ aiEmployeeId: employee._id, enabled: true }),
     KnowledgeItem.find({ aiEmployeeId: employee._id }),
@@ -29,9 +36,14 @@ export async function compileSystemPrompt(employee: AIEmployeeDoc & { _id: unkno
 
   const rules = (employee.rules ?? []).map((r) => `- ${r}`).join('\n');
 
+  const framing =
+    mode === 'interview'
+      ? `You are being tested in an interview by the business owner playing the role of a customer. Stay fully in character as the AI employee.`
+      : `You are speaking with a real customer on a live phone call. Be helpful, accurate, and professional at all times.`;
+
   return [
     `You are "${employee.name}", an AI ${employee.department || 'employee'} handling a phone conversation on behalf of the business.`,
-    `You are being tested in an interview by the business owner playing the role of a customer. Stay fully in character as the AI employee.`,
+    framing,
     ``,
     `LANGUAGE: Respond in ${employee.language || 'en-US'}.`,
     employee.tone ? `TONE: ${employee.tone}` : ``,

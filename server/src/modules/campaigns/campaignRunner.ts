@@ -175,6 +175,8 @@ export async function runCampaign(orgId: string, campaignId: string): Promise<nu
           contactName: contact.name,
           to: contact.phone,
           disclosure,
+          // Dial through THIS employee's own synced agent, not a shared one.
+          agentId: employee.assistantExternalId ?? undefined,
         });
       } catch (err) {
         logger.error({ err, campaignId, to: contact.phone }, 'Outbound dial failed');

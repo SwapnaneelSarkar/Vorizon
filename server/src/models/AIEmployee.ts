@@ -29,6 +29,9 @@ const aiEmployeeSchema = new Schema(
     tested: { type: Boolean, default: false },
     billingConfigured: { type: Boolean, default: false },
     assistantExternalId: { type: String, default: null },
+    // The provider LLM object backing this employee's agent (Retell: retell_llm_id).
+    // Kept so a re-sync updates the same objects instead of leaking new ones.
+    assistantLlmId: { type: String, default: null },
     // Which voice provider assistantExternalId/businessPhoneNumber were bound
     // under at activation — lets us tell "connected to real telephony" apart
     // from "mock" without depending on whatever VOICE_PROVIDER is set to now.

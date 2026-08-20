@@ -50,7 +50,11 @@ const envSchema = z
     RAZORPAY_WEBHOOK_SECRET: z.string().optional().default(''),
     // Retell AI voice engine (VOICE_PROVIDER=retell).
     RETELL_API_KEY: z.string().optional().default(''),
+    // Fallback agent used only if an employee hasn't been synced to its own agent.
     RETELL_AGENT_ID: z.string().optional().default(''),
+    // Default Retell voice + LLM model for per-employee agents created at sync.
+    RETELL_VOICE_ID: z.string().optional().default('11labs-Adrian'),
+    RETELL_LLM_MODEL: z.string().optional().default('gpt-4o'),
     // E.164 number owned in Retell used as outbound caller ID.
     RETELL_FROM_NUMBER: z.string().optional().default(''),
     // Reject unsigned/invalid Retell webhooks. Disable only if signature scheme mismatches.

@@ -242,37 +242,40 @@ export async function markTested(orgId: string, id: string): Promise<AIEmployeeD
 }
 
 /**
- * Bind an inbound employee to the active voice provider's assistant/agent and
- * real inbound number, and persist the result. No-op on the mock engine —
- * there's no real telephony to bind to. Throws with the engine's own message
- * on failure (e.g. no phone number available in the provider account) so
- * activation clearly fails rather than silently going "live" unconnected.
+ * Bind an employee to the active voice provider at activation: sync its OWN
+ * agent (built from its configured brain) so real calls reflect this employee,
+ * and — for inbound — provision + bind the number it answers on. No-op on the
+ * mock engine. Throws with the engine's own message on failure so activation
+ * clearly fails rather than silently going "live" unconnected.
+ *
+ * Sequenced (not parallel): the inbound number is bound to the agent the sync
+ * step creates, so the agent must exist first.
  */
-async function provisionInbound(employee: EmployeeRecord): Promise<void> {
+async function provisionVoice(employee: EmployeeRecord): Promise<void> {
   const engine = getVoiceEngine();
   if (engine.provider === 'mock') return;
 
   const employeeId = String(employee._id);
-  let assistantId: string;
-  let phoneNumber: string;
   try {
-    [{ assistantId }, { phoneNumber }] = await Promise.all([
-      engine.syncAssistant(employeeId),
-      engine.provisionInboundNumber(employeeId),
-    ]);
+    const { assistantId } = await engine.syncAssistant(employeeId);
+    employee.assistantExternalId = assistantId;
+    employee.voiceProvider = engine.provider;
+
+    if (employee.type === 'inbound') {
+      const { phoneNumber } = await engine.provisionInboundNumber(employeeId);
+      // The number typed in the wizard was a placeholder until now — replace it
+      // with the number the provider will actually ring.
+      employee.businessPhoneNumber = phoneNumber;
+      logger.info({ employeeId, provider: engine.provider, phoneNumber }, 'Inbound employee provisioned');
+    } else {
+      logger.info({ employeeId, provider: engine.provider }, 'Outbound employee synced to its agent');
+    }
   } catch (err) {
-    logger.error({ err, employeeId, provider: engine.provider }, 'Inbound provisioning failed');
+    logger.error({ err, employeeId, provider: engine.provider }, 'Voice provisioning failed');
     throw ApiError.badRequest(
       `Could not connect this employee to ${engine.provider}: ${(err as Error).message}`,
     );
   }
-
-  employee.assistantExternalId = assistantId;
-  employee.voiceProvider = engine.provider;
-  // The number typed in the wizard was a placeholder until now — replace it
-  // with the number the provider will actually ring.
-  employee.businessPhoneNumber = phoneNumber;
-  logger.info({ employeeId, provider: engine.provider, phoneNumber }, 'Inbound employee provisioned');
 }
 
 export async function activateEmployee(orgId: string, id: string): Promise<AIEmployeeDTO> {
@@ -284,9 +287,9 @@ export async function activateEmployee(orgId: string, id: string): Promise<AIEmp
       missingForActivation(snapshot),
     );
   }
-  if (employee.type === 'inbound') {
-    await provisionInbound(employee);
-  }
+  // Both inbound and outbound employees get their own provider agent so real
+  // calls reflect their configured brain.
+  await provisionVoice(employee);
   employee.activatedAt = new Date();
   employee.status = 'active';
   await employee.save();

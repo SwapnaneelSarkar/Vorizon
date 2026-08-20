@@ -28,6 +28,15 @@ export interface RetellPhoneNumber {
   nickname?: string;
 }
 
+export interface RetellLlm {
+  llm_id: string;
+}
+
+export interface RetellAgent {
+  agent_id: string;
+  agent_name?: string;
+}
+
 export class RetellApiError extends Error {
   constructor(
     public status: number,
@@ -48,7 +57,7 @@ export class RetellClient {
     if (!this.apiKey) throw new Error('RetellClient requires RETELL_API_KEY');
   }
 
-  private async request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+  private async request<T>(method: 'GET' | 'POST' | 'PATCH', path: string, body?: unknown): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
@@ -95,5 +104,40 @@ export class RetellClient {
 
   listPhoneNumbers(): Promise<RetellPhoneNumber[]> {
     return this.request<RetellPhoneNumber[]>('GET', '/list-phone-numbers');
+  }
+
+  // ---- Per-employee agent management (used by syncAssistant) ----
+
+  /** Create a Retell LLM (the "brain") from a compiled system prompt. */
+  createRetellLlm(input: { general_prompt: string; model?: string }): Promise<RetellLlm> {
+    return this.request<RetellLlm>('POST', '/create-retell-llm', input);
+  }
+
+  /** Update an existing Retell LLM's prompt (re-sync after config edits). */
+  updateRetellLlm(llmId: string, input: { general_prompt: string; model?: string }): Promise<RetellLlm> {
+    return this.request<RetellLlm>('PATCH', `/update-retell-llm/${llmId}`, input);
+  }
+
+  /** Create an agent bound to a Retell LLM, with a voice + language. */
+  createAgent(input: {
+    response_engine: { type: 'retell-llm'; llm_id: string };
+    voice_id: string;
+    agent_name?: string;
+    language?: string;
+  }): Promise<RetellAgent> {
+    return this.request<RetellAgent>('POST', '/create-agent', input);
+  }
+
+  /** Update an existing agent's voice/language/name. */
+  updateAgent(
+    agentId: string,
+    input: { voice_id?: string; agent_name?: string; language?: string },
+  ): Promise<RetellAgent> {
+    return this.request<RetellAgent>('PATCH', `/update-agent/${agentId}`, input);
+  }
+
+  /** Bind a provisioned number to an agent for inbound calls. */
+  updatePhoneNumber(phoneNumber: string, input: { inbound_agent_id?: string }): Promise<RetellPhoneNumber> {
+    return this.request<RetellPhoneNumber>('PATCH', `/update-phone-number/${encodeURIComponent(phoneNumber)}`, input);
   }
 }
