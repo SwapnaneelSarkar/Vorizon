@@ -11,6 +11,12 @@ import { encryptToken, decryptToken } from './crypto.js';
 type ConnectionRecord = ConnectionDoc & { _id: unknown; createdAt?: Date };
 
 /**
+ * Connectors temporarily turned off: hidden from the Integrations page and
+ * blocked from starting an OAuth connect. Remove from this set to re-enable.
+ */
+const DISABLED_CONNECTORS = new Set<ConnectorProvider>(['meta_ads']);
+
+/**
  * Return a valid (non-expired) access token for a connection, transparently
  * refreshing via the stored refresh token when it has expired. OAuth access
  * tokens (Google/Zoho/Salesforce) live ~1h, so any connector that actually
@@ -112,7 +118,9 @@ function toDTO(c: ConnectionRecord): ConnectionDTO {
 export async function listConnectors(orgId: string): Promise<ConnectorInfo[]> {
   const connections = await Connection.find({ organizationId: orgId });
   const byProvider = new Map(connections.map((c) => [c.provider, c as ConnectionRecord]));
-  return Object.values(CONNECTORS).map((def) => {
+  return Object.values(CONNECTORS)
+    .filter((def) => !DISABLED_CONNECTORS.has(def.provider))
+    .map((def) => {
     const conn = byProvider.get(def.provider);
     return {
       provider: def.provider,
@@ -134,6 +142,9 @@ function defOrThrow(provider: ConnectorProvider): ConnectorDef {
 /** Build the provider's OAuth authorize URL for the "Connect" button. */
 export function startConnect(orgId: string, provider: ConnectorProvider): { authUrl: string } {
   const def = defOrThrow(provider);
+  if (DISABLED_CONNECTORS.has(provider)) {
+    throw new ApiError(503, 'CONNECTOR_DISABLED', `${def.name} is temporarily disabled`);
+  }
   if (!isConfigured(def)) {
     throw new ApiError(
       503,

@@ -38,7 +38,6 @@ const steps = [
 
 const connectors = [
   'Google Ads',
-  'Meta Ads',
   'WhatsApp',
   'Instagram',
   'Zoho CRM',
@@ -415,8 +414,8 @@ export function LandingPage() {
                 <BentoIcon icon={Megaphone} />
                 <h3 className="font-semibold text-slate-900">Pulls in leads from your ads</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-                  Connect Google Ads and Meta Ads, and every new lead comes straight in — no forms
-                  or spreadsheets to manage.
+                  Connect Google Ads and every new lead comes straight in — no forms or
+                  spreadsheets to manage.
                 </p>
               </div>
             </Reveal>

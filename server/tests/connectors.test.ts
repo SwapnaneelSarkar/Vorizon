@@ -43,7 +43,9 @@ describe('connector catalog', () => {
     const { token } = await newOwner();
     const res = await bearer(token)(request(app).get('/api/integrations')).expect(200);
     const { connectors, leadIntakeUrl } = res.body.data;
-    expect(connectors.length).toBeGreaterThanOrEqual(12);
+    expect(connectors.length).toBeGreaterThanOrEqual(11);
+    // meta_ads is temporarily disabled, so it must NOT be listed.
+    expect(connectors.find((c: { provider: string }) => c.provider === 'meta_ads')).toBeUndefined();
     const googleAds = connectors.find((c: { provider: string }) => c.provider === 'google_ads');
     expect(googleAds.name).toBe('Google Ads');
     expect(googleAds.configured).toBe(false); // no OAuth app creds in tests
