@@ -15,6 +15,9 @@ const connectionSchema = new Schema(
     accessTokenEnc: { type: String, default: '' },
     refreshTokenEnc: { type: String, default: '' },
     scopes: { type: [String], default: [] },
+    // Provider API base returned with the token (e.g. Zoho's api_domain — .com vs
+    // .in data center). Used for subsequent API calls; falls back to a default.
+    apiDomain: { type: String, default: '' },
     expiresAt: { type: Date, default: null },
     lastError: { type: String, default: '' },
     connectedByUserId: { type: Schema.Types.ObjectId, ref: 'User', default: null },

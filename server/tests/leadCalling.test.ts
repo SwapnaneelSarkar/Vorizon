@@ -35,23 +35,39 @@ async function orgWithOutbound(opts: { consent?: boolean; funds?: number } = {})
   await auth(request(app).post(`/api/ai-employees/${eid}/mark-tested`)).expect(200);
   if (opts.consent !== false) await auth(request(app).post('/api/compliance/consent').send({ accepted: true })).expect(200);
   if (opts.funds) await credit(orgId, opts.funds, 'seed');
-  return { token, orgId, auth };
+  return { token, orgId, auth, eid };
 }
 
 describe('lead → call loop', () => {
   it('dials a qualified lead through the campaign pipeline when the org is ready', async () => {
-    const { orgId } = await orgWithOutbound({ consent: true, funds: 20 });
+    const { orgId, auth, eid } = await orgWithOutbound({ consent: true, funds: 20 });
 
-    const lead = await Lead.create({ organizationId: orgId, source: 'webhook', name: 'Hot Lead', phone: '+14155551234', status: 'new' });
+    // Target an OPEN-schedule campaign so the dial is deterministic regardless of
+    // wall-clock time (the default lead campaign uses business hours by design).
+    const camp = await auth(
+      request(app).post('/api/campaigns').send({
+        name: 'Lead Outreach',
+        aiEmployeeId: eid,
+        callingSchedule: { tz: 'UTC', days: [0, 1, 2, 3, 4, 5, 6], start: '00:00', end: '23:59' },
+      }),
+    ).expect(201);
+
+    const lead = await Lead.create({
+      organizationId: orgId,
+      source: 'webhook',
+      name: 'Hot Lead',
+      phone: '+14155551234',
+      status: 'new',
+      campaignId: camp.body.data.id,
+    });
     await qualifyLead(orgId, String(lead._id));
     await campaignQueue.drain();
 
-    // The lead was materialized as a contact and actually dialed.
+    // The lead was materialized as a contact and actually dialed through the campaign.
     const contact = await Contact.findOne({ organizationId: orgId, phone: '+14155551234' });
     expect(contact).toBeTruthy();
+    expect(String(contact!.campaignId)).toBe(camp.body.data.id);
     expect(await Call.countDocuments({ organizationId: orgId, to: '+14155551234' })).toBeGreaterThan(0);
-    // It runs through a real campaign (default "Inbound Leads"), not a direct dial.
-    expect(await Campaign.countDocuments({ organizationId: orgId, name: 'Inbound Leads' })).toBe(1);
   });
 
   it('does NOT dial when the org has no outbound employee / consent / funds (lead waits, not "contacted")', async () => {

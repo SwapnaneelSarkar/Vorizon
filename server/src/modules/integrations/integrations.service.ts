@@ -6,9 +6,66 @@ import { ApiError } from '../../utils/apiError.js';
 import { recordAudit } from '../../utils/audit.js';
 import { logger } from '../../utils/logger.js';
 import { CONNECTORS, isConfigured, type ConnectorDef } from './catalog.js';
-import { encryptToken } from './crypto.js';
+import { encryptToken, decryptToken } from './crypto.js';
 
 type ConnectionRecord = ConnectionDoc & { _id: unknown; createdAt?: Date };
+
+/**
+ * Return a valid (non-expired) access token for a connection, transparently
+ * refreshing via the stored refresh token when it has expired. OAuth access
+ * tokens (Google/Zoho/Salesforce) live ~1h, so any connector that actually
+ * calls a provider API must go through this rather than using the stored token
+ * directly. Persists the refreshed token + expiry (and Zoho's api_domain).
+ */
+export async function getValidAccessToken(connection: ConnectionRecord): Promise<string> {
+  const access = decryptToken(connection.accessTokenEnc);
+  const stillValid =
+    Boolean(access) && connection.expiresAt != null && connection.expiresAt.getTime() > Date.now() + 60_000;
+  if (stillValid) return access;
+
+  const refresh = decryptToken(connection.refreshTokenEnc);
+  if (!refresh) throw new Error('No refresh token stored — reconnect the integration');
+
+  const def = defOrThrow(connection.provider);
+  const res = await fetch(def.tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refresh,
+      client_id: String(env[def.clientIdEnv]),
+      client_secret: String(env[def.clientSecretEnv]),
+    }).toString(),
+  });
+  const text = await res.text();
+  const parsed = (text ? JSON.parse(text) : {}) as {
+    access_token?: string;
+    expires_in?: number;
+    api_domain?: string;
+    error?: string;
+  };
+  if (!res.ok || parsed.error || !parsed.access_token) {
+    await Connection.updateOne(
+      { _id: connection._id },
+      { $set: { status: 'error', lastError: `Token refresh failed: ${parsed.error ?? res.status}` } },
+    );
+    throw new Error(`token refresh failed: ${parsed.error ?? res.status}`);
+  }
+
+  await Connection.updateOne(
+    { _id: connection._id },
+    {
+      $set: {
+        accessTokenEnc: encryptToken(parsed.access_token),
+        expiresAt: parsed.expires_in ? new Date(Date.now() + parsed.expires_in * 1000) : null,
+        ...(parsed.api_domain ? { apiDomain: parsed.api_domain } : {}),
+        status: 'connected',
+        lastError: '',
+      },
+    },
+  );
+  return parsed.access_token;
+}
 
 /** OAuth redirect URI back to this API. */
 function redirectUri(provider: ConnectorProvider): string {
@@ -107,7 +164,7 @@ export async function handleCallback(
   orgId: string,
 ): Promise<void> {
   const def = defOrThrow(provider);
-  let tokens: { access_token?: string; refresh_token?: string; expires_in?: number };
+  let tokens: { access_token?: string; refresh_token?: string; expires_in?: number; api_domain?: string };
   try {
     const res = await fetch(def.tokenUrl, {
       method: 'POST',
@@ -154,6 +211,7 @@ export async function handleCallback(
       accessTokenEnc: encryptToken(tokens.access_token ?? ''),
       refreshTokenEnc: encryptToken(tokens.refresh_token ?? ''),
       scopes: def.scopes,
+      apiDomain: tokens.api_domain ?? '',
       expiresAt: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000) : null,
       lastError: '',
     },

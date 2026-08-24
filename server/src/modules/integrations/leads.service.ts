@@ -10,6 +10,7 @@ import { getVoiceEngine } from '../../voice/index.js';
 import { callBlockReason, hasCallingConsent } from '../compliance/compliance.service.js';
 import { hasBalance } from '../billing/wallet.service.js';
 import { campaignQueue } from '../campaigns/campaignQueue.js';
+import { syncLeadToZoho } from './crm/zohoCrm.js';
 
 /** Per-org default campaign that rolling inbound leads are dialed through. */
 const DEFAULT_LEAD_CAMPAIGN = 'Inbound Leads';
@@ -78,6 +79,19 @@ export async function ingestLead(
   void qualifyLead(orgId, String(lead._id)).catch((err) =>
     logger.error({ err, leadId: String(lead._id) }, 'Lead qualification failed'),
   );
+
+  // Mirror the lead into a connected CRM (Zoho) — no-op if none connected.
+  void syncLeadToZoho(orgId, {
+    name: lead.name,
+    phone: lead.phone,
+    email: lead.email,
+    company: lead.company,
+    source,
+  })
+    .then((zohoId) => {
+      if (zohoId) return Lead.updateOne({ _id: lead._id }, { $set: { 'raw.zohoLeadId': zohoId } });
+    })
+    .catch((err) => logger.error({ err, leadId: String(lead._id) }, 'Zoho lead sync failed'));
 
   logger.info({ leadId: String(lead._id), source, orgId }, 'Lead ingested');
   return toDTO(lead);
