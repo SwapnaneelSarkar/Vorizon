@@ -22,17 +22,17 @@ const steps = [
   {
     icon: Plug,
     title: 'Connect',
-    text: 'Link your ad platforms, CRM and messaging in a few clicks — or upload your contacts.',
+    text: 'Add your phone number, upload your contacts, or link your ads — it takes a few clicks.',
   },
   {
     icon: Zap,
-    title: 'Automate',
-    text: 'AI captures leads, qualifies them, and calls or messages every prospect on your behalf.',
+    title: 'The AI does the work',
+    text: 'It calls, texts and follows up with every lead for you — just like a real sales rep.',
   },
   {
     icon: BarChart3,
-    title: 'Convert',
-    text: 'Booked appointments and deals sync to your CRM, with conversions fed back to your ads.',
+    title: 'You win customers',
+    text: 'Meetings get booked and everything saves to your CRM — automatically.',
   },
 ];
 
@@ -48,7 +48,7 @@ const connectors = [
   'Google Calendar',
 ];
 
-const pipeline = ['Ad platform', 'Lead captured', 'AI qualifies', 'AI calls / WhatsApp', 'CRM updated', 'Conversion'];
+const pipeline = ['New lead comes in', 'AI calls & texts', 'Meeting booked', 'Saved to your CRM'];
 
 /** Fades content up when it scrolls into view. */
 function Reveal({ children, delay = 0, className }: { children: ReactNode; delay?: number; className?: string }) {
@@ -260,23 +260,23 @@ export function LandingPage() {
         <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 py-24 lg:grid-cols-2 lg:py-32">
           <div className="text-center lg:text-left">
             <span className="animate-hero-in inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-slate-300">
-              <Sparkles className="h-3.5 w-3.5 text-blue-300" /> AI sales agents for modern businesses
+              <Sparkles className="h-3.5 w-3.5 text-blue-300" /> Your AI sales agent
             </span>
             <h1
               className="animate-hero-in mt-6 text-4xl font-extrabold leading-[1.06] tracking-tight text-white sm:text-5xl lg:text-6xl"
               style={{ animationDelay: '100ms' }}
             >
-              Hire AI employees.{' '}
+              An AI sales agent that{' '}
               <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-purple-400 bg-clip-text text-transparent">
-                Grow without limits.
+                calls your leads for you.
               </span>
             </h1>
             <p
               className="animate-hero-in mx-auto mt-5 max-w-xl text-lg leading-relaxed text-slate-300 lg:mx-0"
               style={{ animationDelay: '200ms' }}
             >
-              Connect Google Ads and Meta Ads, capture every lead, and let AI qualify, call and
-              follow up — then push it all to your CRM. Vorizon automates your entire sales loop.
+              Vorizon is an AI that calls your leads, answers your phone, and follows up on WhatsApp —
+              then books the meeting. It works 24/7, so you never miss a sale.
             </p>
             <div
               className="animate-hero-in mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start"
@@ -297,13 +297,13 @@ export function LandingPage() {
               style={{ animationDelay: '400ms' }}
             >
               <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Every integration free to connect
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Calls &amp; answers leads 24/7
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Pay-as-you-go calling at $0.08/min
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Books meetings for you
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Instant Google Ads sync
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Just $0.08 per minute
               </span>
             </div>
           </div>
@@ -343,8 +343,8 @@ export function LandingPage() {
       {/* How it works */}
       <section className="mx-auto max-w-6xl px-6 py-20 lg:py-24">
         <Reveal className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">How Vorizon works</h2>
-          <p className="mt-3 text-lg text-slate-500">Three steps from ad spend to booked revenue.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">How it works</h2>
+          <p className="mt-3 text-lg text-slate-500">Three simple steps — no tech skills needed.</p>
         </Reveal>
         <div className="relative mt-14">
           <div
@@ -375,10 +375,10 @@ export function LandingPage() {
         <div className="mx-auto max-w-6xl px-6 py-20 lg:py-24">
           <Reveal className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-              Everything your sales team does — automated
+              What your AI sales agent does
             </h2>
             <p className="mt-3 text-lg text-slate-500">
-              From the first ad click to a booked deal, Vorizon handles the busywork so you close more.
+              Everything a sales rep does — without the salary.
             </p>
           </Reveal>
 
@@ -386,10 +386,10 @@ export function LandingPage() {
             <Reveal className="lg:col-span-4">
               <div className={bentoCard}>
                 <BentoIcon icon={PhoneCall} />
-                <h3 className="font-semibold text-slate-900">AI voice employees</h3>
+                <h3 className="font-semibold text-slate-900">Makes and answers calls</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-                  Inbound receptionists and outbound campaigns that talk to your customers 24/7 — trained on your
-                  business, in your tone of voice.
+                  It calls your leads and answers your phone 24/7 — trained on your business and
+                  speaking in a natural, human-like voice.
                 </p>
                 <div className="mt-5 rounded-xl bg-slate-50 p-3.5" aria-hidden>
                   <div className="flex items-center gap-3">
@@ -413,10 +413,10 @@ export function LandingPage() {
             <Reveal delay={100} className="lg:col-span-2">
               <div className={bentoCard}>
                 <BentoIcon icon={Megaphone} />
-                <h3 className="font-semibold text-slate-900">Connect your ad platforms</h3>
+                <h3 className="font-semibold text-slate-900">Pulls in leads from your ads</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-                  Link Google Ads and Meta Ads. Vorizon runs campaigns and pulls every lead straight in — no forms, no
-                  spreadsheets.
+                  Connect Google Ads and Meta Ads, and every new lead comes straight in — no forms
+                  or spreadsheets to manage.
                 </p>
               </div>
             </Reveal>
@@ -424,9 +424,10 @@ export function LandingPage() {
             <Reveal className="lg:col-span-2">
               <div className={bentoCard}>
                 <BentoIcon icon={Sparkles} />
-                <h3 className="font-semibold text-slate-900">AI lead qualification</h3>
+                <h3 className="font-semibold text-slate-900">Focuses on your best leads</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-                  Every lead is scored and qualified automatically, then handed to a call or WhatsApp follow-up.
+                  It scores every lead and calls the ones most likely to buy first — so no good lead
+                  goes cold.
                 </p>
                 <div className="mt-5 rounded-xl bg-slate-50 p-3.5" aria-hidden>
                   <div className="flex items-center justify-between text-xs">
@@ -443,9 +444,10 @@ export function LandingPage() {
             <Reveal delay={100} className="lg:col-span-4">
               <div className={bentoCard}>
                 <BentoIcon icon={MessageSquare} />
-                <h3 className="font-semibold text-slate-900">WhatsApp & messaging</h3>
+                <h3 className="font-semibold text-slate-900">Follows up on WhatsApp</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-                  Reach leads on WhatsApp and Instagram, and follow up over email — all from one place.
+                  If a lead doesn&apos;t pick up, it keeps the conversation going on WhatsApp,
+                  Instagram and email until they reply.
                 </p>
                 <div className="mt-5 max-w-md space-y-2" aria-hidden>
                   <div className="w-fit max-w-[85%] rounded-2xl rounded-bl-sm bg-slate-100 px-3.5 py-2 text-xs text-slate-600">
@@ -461,10 +463,10 @@ export function LandingPage() {
             <Reveal className="lg:col-span-3">
               <div className={bentoCard}>
                 <BentoIcon icon={Users} />
-                <h3 className="font-semibold text-slate-900">Sync to your CRM</h3>
+                <h3 className="font-semibold text-slate-900">Saves everything to your CRM</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-                  Push qualified leads and deals to your CRM automatically — your pipeline stays current without data
-                  entry.
+                  Every lead and booking is saved to your CRM automatically — no copying, no data
+                  entry, nothing forgotten.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2" aria-hidden>
                   {['Zoho', 'Salesforce', 'HubSpot'].map((c) => (
@@ -482,9 +484,10 @@ export function LandingPage() {
             <Reveal delay={100} className="lg:col-span-3">
               <div className={bentoCard}>
                 <BentoIcon icon={ShieldCheck} />
-                <h3 className="font-semibold text-slate-900">Compliance built in</h3>
+                <h3 className="font-semibold text-slate-900">Safe and compliant</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-                  Consent tracking, Do-Not-Call enforcement and opt-outs on every dial — TCPA-ready from day one.
+                  It respects consent, Do-Not-Call lists and opt-outs on every call — so you always
+                  stay on the right side of the rules.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2" aria-hidden>
                   {['Consent tracking', 'DNC lists', 'Auto opt-out'].map((c) => (
@@ -516,10 +519,10 @@ export function LandingPage() {
             <div className="relative">
               <div className="mx-auto max-w-2xl text-center">
                 <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                  One automated loop, ad to revenue
+                  From lead to customer — automatically
                 </h2>
                 <p className="mt-3 text-lg text-slate-400">
-                  Every lead flows through the same pipeline — no manual handoffs.
+                  Every lead goes through the same simple flow. Nothing slips through the cracks.
                 </p>
               </div>
 
@@ -586,10 +589,10 @@ export function LandingPage() {
 
             <div className="relative">
               <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Ready to hire your first AI employee?
+                Ready to let AI handle your calls?
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-lg text-blue-100">
-                Set up in minutes. Connect your platforms, add funds, and let Vorizon run your sales.
+                Set it up in minutes. Connect your tools and your AI sales agent starts working right away.
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                 <Link
