@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Bot, PhoneIncoming, PhoneOutgoing, Plus, Trash2 } from 'lucide-react';
 import { employeeApi } from '../../lib/api/endpoints';
 import { apiErrorMessage } from '../../lib/api/client';
@@ -17,6 +17,7 @@ import { cn } from '../../lib/utils';
 
 export function EmployeesPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { data, isLoading } = useQuery({
     queryKey: ['employees'],
     queryFn: () => employeeApi.list(),
@@ -63,7 +64,19 @@ export function EmployeesPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {data.items.map((e) => (
-            <Link key={e.id} to={`/employees/${e.id}`} className="group">
+            <div
+              key={e.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/employees/${e.id}`)}
+              onKeyDown={(ev) => {
+                if (ev.key === 'Enter' || ev.key === ' ') {
+                  ev.preventDefault();
+                  navigate(`/employees/${e.id}`);
+                }
+              }}
+              className="group cursor-pointer rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
+            >
               <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:shadow-card-hover">
                 <div className="mb-4 flex items-center justify-between">
                   <div
@@ -80,7 +93,9 @@ export function EmployeesPage() {
                   </div>
                   <span className="flex items-center gap-1.5">
                     <Badge>{e.status}</Badge>
-                    <span onClick={(ev) => ev.preventDefault()}>
+                    {/* stopPropagation so the trash button + its confirm modal never
+                        trigger the card's navigate-on-click. */}
+                    <span onClick={(ev) => ev.stopPropagation()}>
                       <ConfirmButton
                         onConfirm={() => remove.mutate(e.id)}
                         title="Delete this AI employee?"
@@ -98,7 +113,7 @@ export function EmployeesPage() {
                   {e.department ? ` · ${e.department}` : ''}
                 </p>
               </Card>
-            </Link>
+            </div>
           ))}
         </div>
       )}
