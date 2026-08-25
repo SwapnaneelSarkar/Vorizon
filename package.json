@@ -2,7 +2,7 @@
   "name": "vorizon",
   "version": "0.1.0",
   "private": true,
-  "description": "Vorizon \u2014 AI Employee Platform (build, train, test & deploy AI employees for inbound/outbound calls)",
+  "description": "Vorizon \u2014 an AI sales agent that calls and answers your leads, books meetings, and syncs to your CRM. Inbound + outbound AI voice, lead capture, and compliance. TypeScript monorepo (React + Express + MongoDB), deployed on Vercel + Firebase.",
   "workspaces": [
     "shared",
     "server",
