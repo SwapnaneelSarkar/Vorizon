@@ -36,16 +36,7 @@ const steps = [
   },
 ];
 
-const connectors = [
-  'Google Ads',
-  'WhatsApp',
-  'Instagram',
-  'Zoho CRM',
-  'Salesforce',
-  'HubSpot',
-  'Gmail',
-  'Google Calendar',
-];
+const connectors = ['Google Ads', 'WhatsApp', 'Zoho CRM', 'Gmail', 'Google Calendar'];
 
 const pipeline = ['New lead comes in', 'AI calls & texts', 'Meeting booked', 'Saved to your CRM'];
 
@@ -468,7 +459,7 @@ export function LandingPage() {
                   entry, nothing forgotten.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2" aria-hidden>
-                  {['Zoho', 'Salesforce', 'HubSpot'].map((c) => (
+                  {['Zoho CRM'].map((c) => (
                     <span
                       key={c}
                       className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600"

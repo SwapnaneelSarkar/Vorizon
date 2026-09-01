@@ -43,9 +43,11 @@ describe('connector catalog', () => {
     const { token } = await newOwner();
     const res = await bearer(token)(request(app).get('/api/integrations')).expect(200);
     const { connectors, leadIntakeUrl } = res.body.data;
-    expect(connectors.length).toBeGreaterThanOrEqual(11);
-    // meta_ads is temporarily disabled, so it must NOT be listed.
-    expect(connectors.find((c: { provider: string }) => c.provider === 'meta_ads')).toBeUndefined();
+    expect(connectors.length).toBeGreaterThanOrEqual(5);
+    // Hidden connectors (disabled / not used by this deployment) must NOT be listed.
+    for (const hidden of ['meta_ads', 'stripe', 'twilio', 'salesforce', 'hubspot', 'instagram', 'facebook_pages']) {
+      expect(connectors.find((c: { provider: string }) => c.provider === hidden)).toBeUndefined();
+    }
     const googleAds = connectors.find((c: { provider: string }) => c.provider === 'google_ads');
     expect(googleAds.name).toBe('Google Ads');
     expect(googleAds.configured).toBe(false); // no OAuth app creds in tests
@@ -55,7 +57,8 @@ describe('connector catalog', () => {
 
   it('returns 503 connecting a provider without server credentials', async () => {
     const { token } = await newOwner();
-    const res = await bearer(token)(request(app).post('/api/integrations/hubspot/connect')).expect(503);
+    // google_ads is visible but has no OAuth creds in tests → NOT_CONFIGURED.
+    const res = await bearer(token)(request(app).post('/api/integrations/google_ads/connect')).expect(503);
     expect(res.body.error.code).toBe('CONNECTOR_NOT_CONFIGURED');
   });
 

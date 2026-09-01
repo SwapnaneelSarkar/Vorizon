@@ -11,10 +11,21 @@ import { encryptToken, decryptToken } from './crypto.js';
 type ConnectionRecord = ConnectionDoc & { _id: unknown; createdAt?: Date };
 
 /**
- * Connectors temporarily turned off: hidden from the Integrations page and
- * blocked from starting an OAuth connect. Remove from this set to re-enable.
+ * Connectors hidden from the Integrations page and blocked from connecting.
+ * - meta_ads: temporarily off pending Meta App Review.
+ * - stripe / twilio / salesforce / hubspot / instagram / facebook_pages: not used
+ *   by this deployment (payments = Razorpay, telephony = Exotel, CRM = Zoho), so
+ *   removed to keep the connector list focused. Delete an entry to bring it back.
  */
-const DISABLED_CONNECTORS = new Set<ConnectorProvider>(['meta_ads']);
+const DISABLED_CONNECTORS = new Set<ConnectorProvider>([
+  'meta_ads',
+  'stripe',
+  'twilio',
+  'salesforce',
+  'hubspot',
+  'instagram',
+  'facebook_pages',
+]);
 
 /**
  * Return a valid (non-expired) access token for a connection, transparently
